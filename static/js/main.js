@@ -86,26 +86,37 @@ async function checkIncomingTrades() {
 
         if (data.invitaciones.length === 0) {
             listEl.innerHTML = '<p style="color: var(--text-muted);">No hay invitaciones pendientes.</p>';
-            return;
+        } else {
+            listEl.innerHTML = '';
+            data.invitaciones.forEach(trade => {
+                const card = document.createElement('div');
+                card.className = 'stat-panel';
+                card.style.cssText = 'background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border-left: 4px solid var(--accent-blue); text-align: left;';
+                card.innerHTML = `
+                    <div style="font-size: 0.9rem; margin-bottom: 5px;">
+                        <strong>${trade.emisor}</strong> te invita a tradear
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
+                        Oferta: ${trade.item_ofrecido || 'Sin Item'} / $${trade.monto_j1}
+                    </div>
+                    <button class="btn" style="width: 100%; padding: 5px; font-size: 0.8rem; background: var(--accent-blue);"
+                            onclick="aceptarTrade(${trade.id_negociacion})">Aceptar</button>
+                `;
+                listEl.appendChild(card);
+            });
         }
 
-        listEl.innerHTML = '';
-        data.invitaciones.forEach(trade => {
-            const card = document.createElement('div');
-            card.className = 'stat-panel';
-            card.style.cssText = 'background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border-left: 4px solid var(--accent-blue); text-align: left;';
-            card.innerHTML = `
-                <div style="font-size: 0.9rem; margin-bottom: 5px;">
-                    <strong>${trade.emisor}</strong> te invita a tradear
-                </div>
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
-                    Oferta: ${trade.item_ofrecido || 'Sin Item'} / $${trade.monto_j1}
-                </div>
-                <button class="btn" style="width: 100%; padding: 5px; font-size: 0.8rem; background: var(--accent-blue);"
-                        onclick="aceptarTrade(${trade.id_negociacion})">Aceptar</button>
-            `;
-            listEl.appendChild(card);
-        });
+        const activeResponse = await fetch('/api/trades/active');
+        const activeData = await activeResponse.json();
+        if (activeData.success && activeData.data.id_negociacion) {
+            currentTradeId = activeData.data.id_negociacion;
+            document.getElementById('active-trade-panel').style.display = 'block';
+            document.getElementById('negotiation-panel').style.display = 'none';
+            if (!pollingInterval) {
+                pollingInterval = setInterval(syncTradeTable, 1500);
+            }
+            syncTradeTable();
+        }
     } catch (e) {
         console.error("Error checking trades:", e);
     }
@@ -121,7 +132,20 @@ async function aceptarTrade(idTrade) {
         const result = await response.json();
         if (result.success) {
             alert("Invitación aceptada. Entrando a la mesa de tradeo...");
-            location.reload();
+
+            const activeResponse = await fetch('/api/trades/active');
+            const activeData = await activeResponse.json();
+            if (activeData.success && activeData.data.id_negociacion) {
+                currentTradeId = activeData.data.id_negociacion;
+                document.getElementById('active-trade-panel').style.display = 'block';
+                document.getElementById('negotiation-panel').style.display = 'none';
+                if (!pollingInterval) {
+                    pollingInterval = setInterval(syncTradeTable, 1500);
+                }
+                syncTradeTable();
+            } else {
+                location.reload();
+            }
         } else {
             alert("Error: " + result.message);
         }

@@ -332,8 +332,8 @@ def consultar_mesa_activa(id_jugador):
         FROM T_Negociacion_Tradeo n
         LEFT JOIN T_Item i1 ON n.id_item_j1 = i1.id_item
         LEFT JOIN T_Item i2 ON n.id_item_j2 = i2.id_item
-        WHERE (n.id_jugador_1 = %s OR n.id_jugador_2 = %s)
-        AND n.estado IN ('PENDIENTE', 'EN_PROCESO', 'ESPERANDO_CONFIRMACION_FINAL')
+        WHERE (n.id_jugador_1 = %s OR n.id_jugador_2 = %s)  
+        AND n.estado IN ('ACEPTADO', 'EN_PROCESO', 'ESPERANDO_CONFIRMACION_FINAL')
         LIMIT 1
         """
         cursor.execute(query, (id_jugador, id_jugador, id_jugador))
