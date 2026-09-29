@@ -264,6 +264,36 @@ async function cancelCurrentTrade() {
     }
 }
 
+async function updateHistory() {
+    try {
+        const response = await fetch('/api/history');
+        const data = await response.json();
+        if (!data.success) return;
+
+        const listEl = document.getElementById('history-list');
+        if (!listEl) return;
+
+        listEl.innerHTML = '';
+        if (data.historial.length === 0) {
+            listEl.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-muted);">Sin movimientos todavía.</td></tr>';
+            return;
+        }
+
+        data.historial.forEach(function(mov) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${mov.fecha_hora}</td>
+                <td>${mov.tipo_transaccion}</td>
+                <td>$ ${parseFloat(mov.monto).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                <td>${mov.estado_transaccion}</td>
+            `;
+            listEl.appendChild(row);
+        });
+    } catch (e) {
+        console.error("Error fetching history:", e);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('saldo-display')) {
         updateDashboard();
@@ -275,6 +305,11 @@ document.addEventListener('DOMContentLoaded', function() {
         setInterval(checkIncomingTrades, 2000);
     }
 
+    if (document.getElementById('history-list')) {
+        updateHistory();
+        setInterval(updateHistory, 10000);
+    }
+
     if (document.getElementById('active-trade-panel')) {
         const initTrade = async () => {
             try {
@@ -284,7 +319,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     currentTradeId = result.data.id_negociacion;
                     document.getElementById('active-trade-panel').style.display = 'block';
                     document.getElementById('negotiation-panel').style.display = 'none';
-                    pollingInterval = setInterval(syncTradeTable, 1500);
+                    if (!pollingInterval) {
+                        pollingInterval = setInterval(syncTradeTable, 1500);
+                    }
                     syncTradeTable();
                 }
             } catch (e) {
