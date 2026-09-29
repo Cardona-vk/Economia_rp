@@ -186,11 +186,11 @@ async function syncTradeTable() {
             return;
         }
 
-        const otherItem = isPlayer1 ? trade.id_item_j2 : trade.id_item_j1;
+        const otherItem = isPlayer1 ? trade.nombre_item_j2 : trade.nombre_item_j1;
         const otherMoney = isPlayer1 ? trade.monto_j2 : trade.monto_j1;
         const otherConfirmed = isPlayer1 ? trade.confirmacion_j2 : trade.confirmacion_j1;
 
-        document.getElementById('other-item-display').innerText = otherItem ? `Item ID: ${otherItem}` : 'Sin Item';
+        document.getElementById('other-item-display').innerText = otherItem || 'Sin Item';
         document.getElementById('other-money-display').innerText = `$ ${otherMoney}`;
         document.getElementById('other-status-badge').innerText = otherConfirmed ? '✅ Listo' : '⏳ Esperando';
         document.getElementById('other-status-badge').style.color = otherConfirmed ? 'var(--accent-neon)' : 'var(--text-muted)';

@@ -158,7 +158,15 @@ def obtener_detalle_trade(id_trade):
     if not conn: return None, "Error de conexión"
     try:
         cursor = conn.cursor(dictionary=True)
-        query = "SELECT * FROM T_Negociacion_Tradeo WHERE id_negociacion = %s"
+        query = """
+        SELECT n.*,
+               i1.nombre as nombre_item_j1,
+               i2.nombre as nombre_item_j2
+        FROM T_Negociacion_Tradeo n
+        LEFT JOIN T_Item i1 ON n.id_item_j1 = i1.id_item
+        LEFT JOIN T_Item i2 ON n.id_item_j2 = i2.id_item
+        WHERE n.id_negociacion = %s
+        """
         cursor.execute(query, (id_trade,))
         return cursor.fetchone(), "Detalle recuperado"
     except Error as e:
