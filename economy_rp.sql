@@ -87,7 +87,7 @@ CREATE TABLE T_Negociacion_Tradeo (
   CONSTRAINT fk_negociacion_jugador2 FOREIGN KEY (id_jugador_2) REFERENCES T_Jugador(id_jugador),
   CONSTRAINT fk_negociacion_item_j1 FOREIGN KEY (id_item_j1) REFERENCES T_Item(id_item),
   CONSTRAINT fk_negociacion_item_j2 FOREIGN KEY (id_item_j2) REFERENCES T_Item(id_item),
-  CONSTRAINT chk_negociacion_estado CHECK (estado IN ('PENDIENTE','CONFIRMADO','CANCELADO','EXPIRADO')),
+  CONSTRAINT chk_negociacion_estado CHECK (estado IN ('PENDIENTE','ACEPTADO','EN_PROCESO','ESPERANDO_CONFIRMACION_FINAL','COMPLETADO','CANCELADO','EXPIRADO')),
   CONSTRAINT chk_negociacion_no_vacia CHECK (
     id_item_j1 IS NOT NULL OR id_item_j2 IS NOT NULL OR monto_j1 > 0 OR monto_j2 > 0
   )

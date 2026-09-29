@@ -292,7 +292,6 @@ def update_trade_offer(id_negociacion, is_player_1, item_id, monto):
         if conn: conn.close()
 
 def lock_trade_player(id_negociacion, is_player_1):
-    """Bloquea la oferta de un jugador y verifica si ambos están listos."""
     conn = get_db_connection()
     if not conn: return False, "Error de conexión"
     try:
@@ -306,14 +305,16 @@ def lock_trade_player(id_negociacion, is_player_1):
 
         cursor.execute("SELECT confirmacion_j1, confirmacion_j2 FROM T_Negociacion_Tradeo WHERE id_negociacion = %s", (id_negociacion,))
         res = cursor.fetchone()
+        both_confirmed = False
         if res and res['confirmacion_j1'] and res['confirmacion_j2']:
             cursor.execute("UPDATE T_Negociacion_Tradeo SET estado = 'ESPERANDO_CONFIRMACION_FINAL' WHERE id_negociacion = %s", (id_negociacion,))
             conn.commit()
+            both_confirmed = True
 
-        return True, "Oferta bloqueada"
+        return True, "Oferta bloqueada", both_confirmed
     except Error as e:
         conn.rollback()
-        return False, str(e)
+        return False, str(e), False
     finally:
         if conn: conn.close()
 
@@ -378,20 +379,24 @@ def consultar_ofertas_pendientes(id_jugador):
     finally:
         if conn: conn.close()
 
-def aceptar_invitacion_trade(id_negociacion):
-    """Cambia el estado a EN_PROCESO al aceptar invitación."""
+def aceptar_invitacion_trade(id_trade, id_jugador):
     conn = get_db_connection()
-    if not conn: return False, "Error de conexión"
+    if not conn:
+        return False, "Error de conexión con la base de datos"
     try:
         cursor = conn.cursor()
-        cursor.execute("UPDATE T_Negociacion_Tradeo SET estado = 'EN_PROCESO' WHERE id_negociacion = %s", (id_negociacion,))
+        if isinstance(id_jugador, dict):
+            id_jugador = id_jugador.get('id_usuario') or id_jugador.get('id_jugador')
+
+        query = "UPDATE T_Negociacion_Tradeo SET estado = 'EN_PROCESO' WHERE id_negociacion = %s AND id_jugador_2 = %s"
+        cursor.execute(query, (int(id_trade), int(id_jugador)))
         conn.commit()
         return True, "Invitación aceptada"
-    except Error as e:
+    except Exception as e:
         conn.rollback()
         return False, str(e)
     finally:
-        if conn: conn.close()
+        conn.close()
 
 def actualizar_oferta_receptor(id_negociacion, id_item, monto):
     """Actualiza la oferta del jugador 2 y resetea confirmaciones."""
@@ -487,8 +492,7 @@ def aceptar_invitacion_trade(id_trade, id_jugador):
         if isinstance(id_jugador, dict):
             id_jugador = id_jugador.get('id_usuario') or id_jugador.get('id_jugador')
 
-        # Cambiamos 'EN_PROCESO' por 'ACEPTADO'
-        query = "UPDATE T_Negociacion_Tradeo SET estado = 'ACEPTADO' WHERE id_negociacion = %s AND id_jugador_2 = %s"
+        query = "UPDATE T_Negociacion_Tradeo SET estado = 'EN_PROCESO' WHERE id_negociacion = %s AND id_jugador_2 = %s"
         cursor.execute(query, (int(id_trade), int(id_jugador)))
         conn.commit()
         return True, "Invitación aceptada"

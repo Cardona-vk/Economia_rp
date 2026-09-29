@@ -148,6 +148,20 @@ async function syncTradeTable() {
         const myId = document.body.dataset.userId;
         const isPlayer1 = trade.id_jugador_1 == myId;
 
+        if (trade.estado === 'COMPLETADO') {
+            clearInterval(pollingInterval);
+            alert("¡Comercio completado con éxito!");
+            window.location.href = '/dashboard';
+            return;
+        }
+
+        if (trade.estado === 'CANCELADO') {
+            clearInterval(pollingInterval);
+            alert("El tradeo ha sido cancelado.");
+            window.location.href = '/trade';
+            return;
+        }
+
         const otherItem = isPlayer1 ? trade.id_item_j2 : trade.id_item_j1;
         const otherMoney = isPlayer1 ? trade.monto_j2 : trade.monto_j1;
         const otherConfirmed = isPlayer1 ? trade.confirmacion_j2 : trade.confirmacion_j1;
@@ -162,12 +176,6 @@ async function syncTradeTable() {
         if (myBadge) {
             myBadge.innerText = myConfirmed ? '✅ Listo' : '⏳ Esperando';
             myBadge.style.color = myConfirmed ? 'var(--accent-neon)' : 'var(--text-muted)';
-        }
-
-        if (trade.estado === 'COMPLETADO') {
-            clearInterval(pollingInterval);
-            alert("¡Comercio completado con éxito!");
-            window.location.href = '/dashboard';
         }
     } catch (e) {
         console.error("Error syncing trade table:", e);

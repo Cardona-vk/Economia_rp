@@ -68,7 +68,18 @@ def dashboard():
 @login_required
 def history():
     return render_template('history.html', username=session['username'])
+@app.route('/api/history')
+@login_required
+def api_history():
+    user_id = session.get('user_id')
+    if isinstance(user_id, dict):
+        user_id = user_id.get('id_usuario') or user_id.get('id_jugador')
 
+    historial, msg = database.obtener_historial_jugador(user_id)
+    if historial is None:
+        return jsonify({"success": False, "message": msg}), 500
+
+    return jsonify({"success": True, "historial": historial})
 @app.route('/admin')
 @login_required
 def admin():
@@ -152,6 +163,18 @@ def api_trade_active():
         return jsonify({"success": False, "message": msg})
 
     return jsonify({"success": True, "data": trade})
+@app.route('/api/trades/pending', methods=['GET'])
+@login_required
+def api_trades_pending():
+    user_id = session.get('user_id')
+    if isinstance(user_id, dict):
+        user_id = user_id.get('id_usuario') or user_id.get('id_jugador')
+
+    invitaciones, msg = database.consultar_ofertas_pendientes(user_id)
+    if invitaciones is None:
+        return jsonify({"success": False, "message": msg}), 500
+
+    return jsonify({"success": True, "invitaciones": invitaciones})
 
 @app.route('/api/trades/<int:id_trade>/status', methods=['GET'])
 @login_required
@@ -181,8 +204,8 @@ def api_trades_accept():
 
     if not id_trade:
         return jsonify({"success": False, "message": "ID de tradeo faltante"}), 400
-
-    success, msg = database.aceptar_invitacion_trade(id_trade)
+    success, msg = database.aceptar_invitacion_trade(id_trade, user_id)
+    return jsonify({"success": success, "message": msg})
     return jsonify({"success": success, "message": msg})
 
 @app.route('/api/trades/update_offer', methods=['POST'])
@@ -209,7 +232,25 @@ def api_trade_confirm():
         user_id = user_id.get('id_usuario') or user_id.get('id_jugador')
 
     id_trade = data.get('id_trade')
-    success, msg = database.confirmar_oferta_jugador(id_trade, user_id)
+    if not id_trade:
+        return jsonify({"success": False, "message": "ID de tradeo faltante"}), 400
+
+    trade_data = database.obtener_detalle_trade(id_trade)
+    if not trade_data or not trade_data[0]:
+        return jsonify({"success": False, "message": "Tradeo no encontrado"}), 404
+
+    trade = trade_data[0]
+    is_p1 = (trade['id_jugador_1'] == user_id)
+
+    success, msg, both_confirmed = database.lock_trade_player(id_trade, is_p1)
+
+    if success and both_confirmed:
+        final_success, final_msg = database.finalizar_tradeo(id_trade)
+        if final_success:
+            return jsonify({"success": True, "message": "Tradeo completado exitosamente"})
+        else:
+            return jsonify({"success": False, "message": f"Error al finalizar: {final_msg}"}), 500
+
     return jsonify({"success": success, "message": msg})
 
 @app.route('/api/trades/cancel', methods=['POST'])
