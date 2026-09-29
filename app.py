@@ -14,6 +14,22 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get('user_id')
+        if isinstance(user_id, dict):
+            user_id = user_id.get('id_usuario') or user_id.get('id_jugador')
+        conn = database.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT es_admin FROM T_Jugador WHERE id_jugador = %s", (user_id,))
+        res = cursor.fetchone()
+        conn.close()
+        if not res or not res[0]:
+            return "Acceso denegado, esta sección es solo para administradores.", 403
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/')
 def index():
     return redirect(url_for('login'))
@@ -81,7 +97,7 @@ def api_history():
 
     return jsonify({"success": True, "historial": historial})
 @app.route('/admin')
-@login_required
+@admin_required
 def admin():
     return render_template('admin.html', username=session['username'])
 
@@ -206,7 +222,7 @@ def api_trades_accept():
         return jsonify({"success": False, "message": "ID de tradeo faltante"}), 400
     success, msg = database.aceptar_invitacion_trade(id_trade, user_id)
     return jsonify({"success": success, "message": msg})
-    return jsonify({"success": success, "message": msg})
+   
 
 @app.route('/api/trades/update_offer', methods=['POST'])
 @login_required
