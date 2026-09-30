@@ -1,10 +1,38 @@
 import mysql.connector
-from mysql.connector import Error
+from mysql.connector import Error, pooling
 from contextlib import contextmanager
 from core.config import Config
 
+_db_pool = None
+
+def _get_pool():
+    global _db_pool
+    if _db_pool is None:
+        try:
+            _db_pool = pooling.MySQLConnectionPool(
+                pool_name="economy_pool",
+                pool_size=5,
+                pool_reset_session=True,
+                host=Config.DB_HOST,
+                user=Config.DB_USER,
+                password=Config.DB_PASSWORD,
+                database=Config.DB_NAME,
+                port=Config.DB_PORT
+            )
+        except Exception as e:
+            print(f"[DB Pool Error] Fallo al crear pool: {e}")
+            _db_pool = None
+    return _db_pool
+
 def get_db_connection():
-    """Retorna una nueva conexión activa a la base de datos MySQL."""
+    """Retorna una conexión activa desde el pool o una conexión directa de respaldo."""
+    pool = _get_pool()
+    if pool:
+        try:
+            return pool.get_connection()
+        except Error as e:
+            print(f"[DB Pool Warning] No se pudo obtener conexión del pool: {e}, intentando directa...")
+
     try:
         connection = mysql.connector.connect(
             host=Config.DB_HOST,
