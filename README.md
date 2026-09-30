@@ -291,3 +291,4 @@ Para consultar la guía visual paso a paso con capturas de pantalla de alta reso
 ---
 
 > 💡 *Desarrollado con rigor de ingeniería de software para simulación económica y de comercio en entornos de rol.*
+
