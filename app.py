@@ -10,6 +10,7 @@ def create_app(config_class=Config):
     """
     app = Flask(__name__, template_folder='templates', static_folder='static')
     app.config.from_object(config_class)
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 43200
     app.secret_key = config_class.SECRET_KEY
 
     # Registrar Blueprints de Rutas
