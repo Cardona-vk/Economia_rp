@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>{% block title %}Trade OS - Gaming HUD{% endblock %}</title>
+
+    <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+
+    <style>
+        @layer base {
+            html, body { margin: 0; padding: 0; }
+            body { overscroll-behavior: none; }
+            main > :first-child { margin-top: 0 !important; }
+            main > :last-child { margin-bottom: 0 !important; }
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #14121d; }
+        ::-webkit-scrollbar-thumb { background: #36333f; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00daf3; }
+    </style>
+
+    <!-- Tailwind CSS with Stitch Theme Configuration -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary": "#003733",
+                        "secondary-container": "#00d2c4",
+                        "outline-variant": "#3b494c",
+                        "surface-tint": "#00daf3",
+                        "outline": "#849396",
+                        "secondary": "#46eee0",
+                        "on-primary": "#00363d",
+                        "on-primary-fixed-variant": "#004f58",
+                        "on-error": "#690005",
+                        "primary-fixed": "#9cf0ff",
+                        "surface-container-low": "#1c1a25",
+                        "tertiary": "#a8ffd2",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "on-secondary-fixed": "#00201d",
+                        "surface-container-high": "#2b2834",
+                        "inverse-surface": "#e6e0f0",
+                        "on-primary-container": "#00626e",
+                        "primary-container": "#00e5ff",
+                        "tertiary-fixed": "#6ffbbe",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#28ddcf",
+                        "primary-fixed-dim": "#00daf3",
+                        "on-tertiary-container": "#006645",
+                        "on-background": "#e6e0f0",
+                        "surface-bright": "#3a3744",
+                        "error-container": "#93000a",
+                        "on-secondary-container": "#00554f",
+                        "background": "#14121d",
+                        "inverse-on-surface": "#312f3b",
+                        "secondary-fixed": "#56faeb",
+                        "on-surface": "#e6e0f0",
+                        "surface-dim": "#14121d",
+                        "on-primary-fixed": "#001f24",
+                        "tertiary-fixed-dim": "#4edea3",
+                        "surface-container-highest": "#36333f",
+                        "surface-variant": "#36333f",
+                        "inverse-primary": "#006875",
+                        "on-secondary-fixed-variant": "#00504a",
+                        "on-tertiary-fixed": "#002113",
+                        "on-tertiary": "#003824",
+                        "primary": "#c3f5ff",
+                        "surface-container-lowest": "#0f0d18",
+                        "on-error-container": "#ffdad6",
+                        "surface-container": "#201e2a",
+                        "on-surface-variant": "#bac9cc",
+                        "tertiary-container": "#5be9ad",
+                        "surface": "#14121d"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "gutter": "1rem",
+                        "margin-desktop": "2rem",
+                        "space-md": "1rem",
+                        "margin-tablet": "1.5rem",
+                        "gutter-desktop": "1.5rem",
+                        "space-xs": "0.25rem",
+                        "space-sm": "0.5rem",
+                        "space-lg": "1.5rem",
+                        "space-xl": "2.5rem",
+                        "margin": "1rem"
+                    },
+                    fontFamily: {
+                        "headline-sm": ["Space Grotesk", "sans-serif"],
+                        "label-md": ["JetBrains Mono", "monospace"],
+                        "label-sm": ["JetBrains Mono", "monospace"],
+                        "label-lg": ["JetBrains Mono", "monospace"],
+                        "headline-md": ["Space Grotesk", "sans-serif"],
+                        "headline-lg": ["Space Grotesk", "sans-serif"],
+                        "display-lg": ["Space Grotesk", "sans-serif"],
+                        "body-sm": ["Space Grotesk", "sans-serif"],
+                        "body-md": ["Space Grotesk", "sans-serif"],
+                        "body-lg": ["Space Grotesk", "sans-serif"]
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- SweetAlert2 for Cyberpunk Modals & Dialogs -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* Custom HUD SweetAlert2 Cyberpunk Theme */
+        .swal2-popup.hud-swal {
+            background: rgba(28, 26, 37, 0.95) !important;
+            backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(0, 229, 255, 0.3) !important;
+            border-radius: 1rem !important;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 229, 255, 0.15) !important;
+            color: #e6e0f0 !important;
+            font-family: 'Space Grotesk', sans-serif !important;
+        }
+        .swal2-title.hud-swal-title {
+            color: #c3f5ff !important;
+            font-size: 1.25rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            font-weight: 700 !important;
+        }
+        .swal2-html-container.hud-swal-html {
+            color: #bac9cc !important;
+            font-size: 0.9rem !important;
+        }
+        .hud-swal-confirm {
+            background: #00e5ff !important;
+            color: #00363d !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            border-radius: 0.75rem !important;
+            padding: 0.75rem 1.5rem !important;
+            box-shadow: 0 0 16px rgba(0, 229, 255, 0.4) !important;
+        }
+        .hud-swal-cancel {
+            background: rgba(147, 0, 10, 0.25) !important;
+            color: #ffb4ab !important;
+            border: 1px solid rgba(255, 180, 171, 0.3) !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            border-radius: 0.75rem !important;
+            padding: 0.75rem 1.5rem !important;
+        }
+
+        /* Collapsed Sidebar Rules */
+        body.sidebar-collapsed #app-sidebar {
+            width: 5rem !important;
+        }
+        body.sidebar-collapsed #app-sidebar .sidebar-label,
+        body.sidebar-collapsed #app-sidebar .sidebar-extra,
+        body.sidebar-collapsed #app-sidebar .sidebar-brand-text {
+            display: none !important;
+        }
+        body.sidebar-collapsed #app-sidebar .nav-item {
+            justify-content: center !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+        body.sidebar-collapsed #main-layout {
+            padding-left: 5rem !important;
+        }
+        body.sidebar-collapsed #top-header {
+            left: 5rem !important;
+        }
+        
+        /* Active glow for collapsed dock icons (Reference style) */
+        .dock-active-glow {
+            box-shadow: 0 0 16px rgba(0, 229, 255, 0.5), inset 0 0 8px rgba(0, 229, 255, 0.3);
+        }
+
+        /* ============================================================
+           CYBERPUNK ITEM RARITY FRAMES & ANIMATIONS
+           ============================================================ */
+        @keyframes legendaryShine {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        @keyframes cyberPulseGold {
+            0%, 100% { box-shadow: 0 0 16px rgba(255, 215, 0, 0.45), inset 0 0 10px rgba(255, 215, 0, 0.2); border-color: rgba(255, 215, 0, 0.9); }
+            50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.85), inset 0 0 20px rgba(255, 215, 0, 0.4); border-color: #fff; }
+        }
+        @keyframes cyberPulseEpic {
+            0%, 100% { box-shadow: 0 0 15px rgba(192, 38, 211, 0.45), inset 0 0 10px rgba(192, 38, 211, 0.2); }
+            50% { box-shadow: 0 0 28px rgba(192, 38, 211, 0.8), inset 0 0 18px rgba(192, 38, 211, 0.4); }
+        }
+        @keyframes urgentTimerPulse {
+            0%, 100% { border-color: rgba(255, 180, 171, 0.5); box-shadow: 0 0 14px rgba(255, 180, 171, 0.3); background-color: rgba(147, 0, 10, 0.3); }
+            50% { border-color: rgba(255, 70, 70, 1); box-shadow: 0 0 32px rgba(255, 50, 50, 0.8); background-color: rgba(147, 0, 10, 0.6); }
+        }
+
+        .rarity-frame-legendary {
+            border: 1.5px solid #ffd700 !important;
+            animation: cyberPulseGold 3s infinite ease-in-out;
+            position: relative;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(28, 26, 37, 0.95) 100%) !important;
+        }
+        .rarity-frame-legendary::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            background-size: 200% 100%;
+            animation: legendaryShine 4s infinite linear;
+            pointer-events: none;
+            border-radius: inherit;
+        }
+
+        .rarity-frame-epic {
+            border: 1.5px solid #c026d3 !important;
+            animation: cyberPulseEpic 3s infinite ease-in-out;
+            position: relative;
+            background: linear-gradient(135deg, rgba(192, 38, 211, 0.12) 0%, rgba(28, 26, 37, 0.95) 100%) !important;
+        }
+
+        .rarity-frame-rare {
+            border: 1.5px solid #00e5ff !important;
+            box-shadow: 0 0 12px rgba(0, 229, 255, 0.3), inset 0 0 6px rgba(0, 229, 255, 0.1);
+            position: relative;
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.1) 0%, rgba(28, 26, 37, 0.95) 100%) !important;
+        }
+
+        .rarity-frame-common {
+            border: 1px solid rgba(91, 233, 173, 0.35) !important;
+            box-shadow: 0 0 8px rgba(91, 233, 173, 0.15);
+            position: relative;
+            background: rgba(28, 26, 37, 0.9) !important;
+        }
+
+        .hud-timer-urgent {
+            animation: urgentTimerPulse 1s infinite ease-in-out !important;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface min-h-screen selection:bg-primary-container selection:text-on-primary-container" data-user-id="{{ player_id or session.get('user_id') }}">
+
+    <!-- HUD Toast Notification Container -->
+    <div id="hud-toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm w-full"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="app-sidebar" class="fixed left-0 top-0 h-full w-72 bg-surface-container-low/95 backdrop-blur-2xl z-50 flex flex-col justify-between p-3.5 shadow-2xl border-r border-outline-variant/20 transition-all duration-300 ease-in-out">
+        <div class="flex flex-col gap-4">
+            <!-- Brand Logo Header & Collapse Indicator -->
+            <div class="flex items-center justify-between px-1">
+                <a href="{{ url_for('views.dashboard') }}" class="flex items-center gap-2.5 group">
+                    <div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center p-2 shadow-md shadow-surface-container-lowest border border-primary/20 group-hover:border-primary transition-all">
+                        <!-- Angular Tactical Gaming Icon (like Dota/Gaming Reference) -->
+                        <svg class="w-6 h-6 text-primary-container drop-shadow-[0_0_8px_rgba(0,229,255,0.7)]" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <span class="sidebar-brand-text font-headline-md text-lg tracking-wider uppercase text-primary drop-shadow-[0_0_12px_rgba(0,229,255,0.45)] font-bold">TRADE OS</span>
+                </a>
+                <span class="sidebar-extra font-label-sm text-[10px] px-2 py-0.5 rounded-full bg-surface-container-high text-primary-fixed-dim border border-outline-variant/30">v2.4</span>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex flex-col gap-1.5 mt-2">
+                <a href="{{ url_for('views.dashboard') }}" 
+                   title="Dashboard"
+                   class="nav-item flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group relative {% if request.endpoint in ['views.dashboard', 'dashboard'] %}bg-primary-container text-on-primary-container font-headline-sm shadow-[0_0_16px_rgba(0,229,255,0.45)] dock-active-glow font-bold{% else %}text-on-surface-variant hover:bg-surface-container hover:text-on-surface{% endif %}">
+                    <span class="material-symbols-outlined text-[22px] transition-transform group-hover:scale-110">dashboard</span>
+                    <span class="sidebar-label font-headline-sm text-sm uppercase tracking-wide">Dashboard</span>
+                </a>
+
+                <a href="{{ url_for('views.trade') }}" 
+                   title="Comercio P2P"
+                   class="nav-item flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group relative {% if request.endpoint in ['views.trade', 'trade'] %}bg-primary-container text-on-primary-container font-headline-sm shadow-[0_0_16px_rgba(0,229,255,0.45)] dock-active-glow font-bold{% else %}text-on-surface-variant hover:bg-surface-container hover:text-on-surface{% endif %}">
+                    <span class="material-symbols-outlined text-[22px] transition-transform group-hover:scale-110">storefront</span>
+                    <span class="sidebar-label font-headline-sm text-sm uppercase tracking-wide">Comercio P2P</span>
+                </a>
+
+                <a href="{{ url_for('views.history') }}" 
+                   title="Historial"
+                   class="nav-item flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group relative {% if request.endpoint in ['views.history', 'history'] %}bg-primary-container text-on-primary-container font-headline-sm shadow-[0_0_16px_rgba(0,229,255,0.45)] dock-active-glow font-bold{% else %}text-on-surface-variant hover:bg-surface-container hover:text-on-surface{% endif %}">
+                    <span class="material-symbols-outlined text-[22px] transition-transform group-hover:scale-110">receipt_long</span>
+                    <span class="sidebar-label font-headline-sm text-sm uppercase tracking-wide">Historial</span>
+                </a>
+
+                <a href="{{ url_for('views.admin') }}" 
+                   title="Admin Panel"
+                   class="nav-item flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group relative {% if request.endpoint in ['views.admin', 'admin'] %}bg-primary-container text-on-primary-container font-headline-sm shadow-[0_0_16px_rgba(0,229,255,0.45)] dock-active-glow font-bold{% else %}text-on-surface-variant hover:bg-surface-container hover:text-on-surface{% endif %}">
+                    <span class="material-symbols-outlined text-[22px] transition-transform group-hover:scale-110">settings</span>
+                    <span class="sidebar-label font-headline-sm text-sm uppercase tracking-wide">Admin</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Bottom Controls: User profile, logout & sidebar collapse button (matching reference) -->
+        <div class="flex flex-col gap-2.5 pt-3 border-t border-outline-variant/20">
+            <!-- User Summary -->
+            <div class="sidebar-extra flex items-center justify-between p-2.5 rounded-xl bg-surface-container/70 backdrop-blur-md">
+                <div class="flex items-center gap-2.5">
+                    <div class="relative flex items-center justify-center">
+                        <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-on-primary text-xs">
+                            {{ (session.get('username') or 'U')[:1] | upper }}
+                        </div>
+                        <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-tertiary-container shadow-[0_0_8px_#5be9ad]"></span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-headline-sm text-xs text-on-surface font-semibold leading-tight uppercase truncate max-w-[110px]">
+                            {{ session.get('username') or 'OPERADOR' }}
+                        </span>
+                        <span class="font-label-sm text-[10px] text-tertiary uppercase">#{{ player_id or session.get('user_id') }} • Online</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logout Link -->
+            <a href="{{ url_for('auth.logout') }}" 
+               title="Cerrar Sesión"
+               class="nav-item flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-error-container/20 text-error hover:bg-error-container/40 hover:text-on-error-container transition-all duration-150 shadow-[0_0_12px_rgba(239,68,68,0.15)]">
+                <span class="material-symbols-outlined text-[18px]">logout</span>
+                <span class="sidebar-label font-headline-sm text-xs uppercase tracking-wider font-bold">Cerrar Sesión</span>
+            </a>
+
+            <!-- Reference Style Collapsible Toggle Button -->
+            <div class="w-full flex items-center justify-center pt-1">
+                <button type="button" 
+                        onclick="toggleSidebar()" 
+                        id="sidebar-toggle-btn"
+                        title="Expandir / Contraer Barra Lateral"
+                        class="p-2 rounded-xl border border-dashed border-primary/40 hover:border-primary bg-surface-container/40 hover:bg-surface-container text-primary flex items-center justify-center transition-all duration-200 shadow-[0_0_12px_rgba(0,229,255,0.15)] active:scale-95 group">
+                    <span id="sidebar-toggle-icon" class="material-symbols-outlined text-[20px] transition-transform duration-300">chevron_left</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Canvas -->
+    <div id="main-layout" class="pl-72 transition-all duration-300 ease-in-out">
+        <!-- Top Telemetry Header -->
+        <header id="top-header" class="fixed top-0 left-72 right-0 h-16 bg-surface/85 backdrop-blur-xl z-40 border-b border-outline-variant/15 flex items-center justify-between px-gutter-desktop transition-all duration-300 ease-in-out">
+            <div class="flex items-center gap-space-md flex-1 max-w-xl">
+                <div class="relative w-full">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                    <input class="w-full pl-9 pr-space-md py-1.5 rounded-lg bg-surface-container-lowest/80 text-on-surface placeholder:text-outline font-label-md text-label-md uppercase tracking-wider focus:outline-none focus:ring-1 focus:ring-primary-container shadow-inner" 
+                           placeholder="BUSCAR ÍTEM, JUGADOR O ID // CTRL + K" type="text"/>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-space-md">
+                <div class="hidden xl:flex items-center gap-space-md font-label-md text-label-md">
+                    <div class="flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-surface-container-high/60">
+                        <span class="w-2 h-2 rounded-full bg-tertiary-container shadow-[0_0_6px_#5be9ad]"></span>
+                        <span class="text-on-surface-variant">LATENCIA:</span>
+                        <span class="text-tertiary font-bold">18ms</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-surface-container-high/60">
+                        <span class="material-symbols-outlined text-[14px] text-primary">schedule</span>
+                        <span class="text-on-surface-variant">SERVIDOR:</span>
+                        <span class="text-primary font-bold">ACTIVO</span>
+                    </div>
+                </div>
+
+                <a href="{{ url_for('views.trade') }}" class="flex items-center gap-1.5 px-space-md py-1.5 rounded-lg bg-primary text-on-primary font-headline-sm text-headline-sm uppercase tracking-wider shadow-[0_0_14px_rgba(0,229,255,0.4)] hover:brightness-110 active:scale-95 transition-all">
+                    <span class="material-symbols-outlined text-[16px]">bolt</span>
+                    <span>Quick Trade</span>
+                </a>
+
+                <button class="relative p-2 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">notifications</span>
+                    <span id="header-notif-dot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary-container shadow-[0_0_6px_#00e5ff]"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Page Dynamic Viewport -->
+        <main class="w-full pt-16 bg-surface min-h-screen relative">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Main Dynamic Script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

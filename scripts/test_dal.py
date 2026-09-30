@@ -1,6 +1,11 @@
-import database
+import sys
+import os
 import time
-import uuid
+
+# Permitir importación desde la raíz del proyecto
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import database
 
 def inicializar_servidor():
     """Asegura que exista al menos un servidor en la base de datos."""
@@ -16,8 +21,8 @@ def inicializar_servidor():
         if cursor.fetchone()[0] == 0:
             print("T_Servidor está vacía. Insertando servidor inicial...")
             sql = """
-            INSERT INTO T_Servidor
-            (nombre, porcentaje_comision, limite_bienes_por_jugador, tiempo_enfriamiento_min)
+            INSERT INTO T_Servidor 
+            (nombre, porcentaje_comision, limite_bienes_por_jugador, tiempo_enfriamiento_min) 
             VALUES ('Servidor Principal', 5.00, 10, 30)
             """
             cursor.execute(sql)
@@ -38,7 +43,6 @@ def limpiar_datos_prueba():
     conn = database.get_db_connection()
     if not conn: return
 
-    # Eliminamos solo lo que no es inmutable según el brief (T_Transaccion y T_Detalle_Transaccion son inmutables)
     tablas = [
         "T_Negociacion_Tradeo",
         "T_Item",
@@ -82,11 +86,11 @@ def setup_sp_data(id_jugador):
         if cursor.fetchone()[0] == 0:
             print("Creando cuenta de SISTEMA...")
             cursor.execute("""
-                INSERT INTO T_Cuenta (id_jugador, id_servidor, tipo_cuenta, saldo_inicial, saldo_disponible)
+                INSERT INTO T_Cuenta (id_jugador, id_servidor, tipo_cuenta, saldo_inicial, saldo_disponible) 
                 VALUES (NULL, %s, 'SISTEMA', 100000.00, 100000.00)
             """, (id_servidor,))
 
-        # 3. Crear Empleo (T_Empleo) - Manejamos duplicados
+        # 3. Crear Empleo (T_Empleo)
         try:
             cursor.execute("INSERT INTO T_Empleo (id_servidor, nombre_empleo, tarifa_base) VALUES (%s, 'Obrero', 100.00)", (id_servidor,))
             id_empleo = cursor.lastrowid
@@ -101,7 +105,7 @@ def setup_sp_data(id_jugador):
         cursor.execute("INSERT INTO T_Item (id_jugador, nombre, precio, tiene_deuda) VALUES (%s, 'Item J1', 500.00, FALSE)", (id_jugador,))
         id_item_j1 = cursor.lastrowid
 
-        # 6. Segundo Jugador para tradeos (T_Jugador) - Nombre y correo dinámicos
+        # 6. Segundo Jugador para tradeos (T_Jugador)
         import bcrypt
         u2_name = f"test_user2_{int(time.time())}"
         u2_email = f"test2_{int(time.time())}@mail.com"
@@ -133,7 +137,7 @@ def test_dal():
 
     limpiar_datos_prueba()
 
-    # 1. Prueba de Registro con nombre dinámico
+    # 1. Prueba de Registro
     u_name = f"test_user_{int(time.time())}"
     u_email = f"test_{int(time.time())}@mail.com"
     print(f"\n[1] Probando registrar_jugador ({u_name})...")
@@ -156,26 +160,22 @@ def test_dal():
         saldo, msg = database.consultar_saldo(user_id)
         print(f"Resultado: {'✅' if saldo is not None else '❌'} - {msg} (Saldo: {saldo})")
 
-        # --- PRUEBAS DE PROCEDIMIENTOS ALMACENADOS ---
+        # Procedimientos Almacenados
         id_empleo, id_user2, items = setup_sp_data(user_id)
 
         if id_empleo:
-            # 4. Prueba sp_pagar_jornada
             print("\n[4] Probando sp_pagar_jornada...")
             success, msg = database.pagar_jornada(user_id, id_empleo, 8)
             print(f"Resultado: {'✅' if success else '❌'} - {msg}")
 
-            # Verificar que el saldo aumentó
             saldo_nuevo, _ = database.consultar_saldo(user_id)
             print(f"Nuevo saldo tras jornada: {saldo_nuevo}")
 
-            # 5. Prueba sp_abrir_negociacion
             print("\n[5] Probando sp_abrir_negociacion...")
             success, msg = database.abrir_negociacion(user_id, id_user2, items[0], items[1], 100.0, 200.0, 10)
             print(f"Resultado: {'✅' if success else '❌'} - {msg}")
 
             if success:
-                # Necesitamos el id de la negociación para confirmar
                 conn = database.get_db_connection()
                 cursor = conn.cursor()
                 cursor.execute("SELECT id_negociacion FROM T_Negociacion_Tradeo ORDER BY id_negociacion DESC LIMIT 1")
@@ -184,17 +184,13 @@ def test_dal():
                     id_neg = row[0]
                     conn.close()
 
-                    # 6. Prueba sp_confirmar_tradeo (Ambos deben confirmar)
                     print("\n[6] Probando sp_confirmar_tradeo...")
-                    # Confirmación J1
                     s1, m1 = database.confirmar_tradeo(id_neg, user_id)
                     print(f"Confirmación J1: {'✅' if s1 else '❌'} - {m1}")
 
-                    # Confirmación J2
                     s2, m2 = database.confirmar_tradeo(id_neg, id_user2)
                     print(f"Confirmación J2: {'✅' if s2 else '❌'} - {m2}")
 
-                    # Verificar cambio de propiedad del item
                     saldo_final, _ = database.consultar_saldo(user_id)
                     print(f"Saldo final J1: {saldo_final}")
                 else:

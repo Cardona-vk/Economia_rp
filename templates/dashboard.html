@@ -1,54 +1,213 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Economy RP - Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <div class="tablet-container">
-        <div class="camera-dot"></div>
-        <div class="tablet-screen">
-            <nav class="nav-bar">
-                <h2 class="font-rajdhani" style="color: var(--accent-neon); text-align: center; margin-bottom: 2rem;">ECONOMY HUD</h2>
-                <div class="nav-links">
-                    <a href="{{ url_for('dashboard') }}" class="active">📊 Dashboard</a>
-                    <a href="{{ url_for('trade') }}">🤝 Comercio</a>
-                    <a href="{{ url_for('history') }}">📜 Historial</a>
-                    <a href="{{ url_for('admin') }}">⚙️ Admin</a>
-                    <a href="{{ url_for('logout') }}" style="color: var(--error-color);">🚪 Salir</a>
-                </div>
-            </nav>
+{% extends "base.html" %}
 
-            <main class="page-content">
-                <div style="display: grid; grid-template-columns: 300px 1fr; gap: 30px;">
-                    <div class="stat-panel neon-border-cyan">
-                        <div style="color: var(--text-muted); text-transform: uppercase; font-size: 0.8rem;">Saldo Disponible</div>
-                        <div id="saldo-display" style="font-size: 2.5rem; color: var(--accent-neon); font-weight: bold; margin: 10px 0;">$ 0.00</div>
-                        <div style="color: var(--accent-blue); font-weight: bold; font-size: 1.1rem; margin-top: 10px;">ID: #{{ player_id }}</div>
-                    </div>
+{% block title %}Trade OS - Dashboard Principal{% endblock %}
 
-                    <div class="stat-panel neon-border-emerald">
-                        <h3 class="font-rajdhani" style="color: var(--accent-blue); margin-top: 0; text-transform: uppercase;">Inventario de Bienes</h3>
-                        <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
-                            <thead>
-                                <tr style="text-align: left; color: var(--accent-blue); text-transform: uppercase; font-size: 0.8rem; border-bottom: 1px solid var(--border-color);">
-                                    <th style="padding: 12px;">Ítem</th>
-                                    <th style="padding: 12px;">Precio</th>
-                                    <th style="padding: 12px;">Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody id="inventory-list">
-                                <!-- Cargado por AJAX -->
-                            </tbody>
-                        </table>
-                    </div>
+{% block content %}
+<div class="flex flex-col w-full">
+    <div class="p-margin-tablet lg:p-margin-desktop flex flex-col gap-space-lg max-w-[1720px] mx-auto w-full">
+        
+        <!-- Top Cockpit Status Bar -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md bg-surface-container/60 backdrop-blur-xl p-space-md rounded-2xl border border-outline-variant/20 shadow-lg">
+            <div class="flex items-center gap-space-md">
+                <div class="relative w-12 h-12 rounded-xl bg-gradient-to-tr from-primary-container/30 to-secondary/20 flex items-center justify-center overflow-hidden border border-primary/20">
+                    <span class="material-symbols-outlined text-primary text-[28px]">shield_person</span>
+                    <div class="absolute inset-0 bg-primary-container/10 mix-blend-overlay"></div>
                 </div>
-            </main>
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-space-xs">
+                        <h1 class="font-headline-lg text-headline-lg uppercase text-on-surface tracking-wider leading-none">
+                            Operador: <span class="text-primary drop-shadow-[0_0_12px_rgba(0,229,255,0.4)]">{{ username }}</span>
+                        </h1>
+                        <span class="font-label-sm text-label-sm px-space-xs py-0.5 rounded-full bg-tertiary-container/20 text-tertiary uppercase">Verificado</span>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-space-xs mt-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-secondary shadow-[0_0_6px_#46eee0]"></span>
+                        <span>Servidor RP Los Santos</span>
+                        <span class="text-outline">/</span>
+                        <span class="font-label-sm text-label-sm text-secondary uppercase">Economía Estable • Tick 64</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-space-sm font-label-md text-label-md">
+                <div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg bg-surface-container-lowest/80 text-on-surface-variant border border-outline-variant/10">
+                    <span class="text-outline font-label-sm">ID JUGADOR:</span>
+                    <span class="text-primary font-bold">#{{ player_id }}</span>
+                </div>
+                <div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg bg-surface-container-lowest/80 text-on-surface-variant border border-outline-variant/10">
+                    <span class="material-symbols-outlined text-[16px] text-tertiary">database</span>
+                    <span class="text-outline font-label-sm">LATENCIA:</span>
+                    <span class="text-tertiary font-bold">18ms</span>
+                </div>
+                <button onclick="updateDashboard()" class="flex items-center gap-1.5 px-space-sm py-1.5 rounded-lg bg-surface-bright hover:bg-surface-container-highest text-on-surface transition-all text-label-md font-label-md uppercase border border-outline-variant/20">
+                    <span class="material-symbols-outlined text-[16px] text-primary">sync</span>
+                    <span>Actualizar HUD</span>
+                </button>
+            </div>
         </div>
-    </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-</body>
-</html>
+        <!-- 4 Main Dynamic HUD Telemetry Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop">
+            
+            <!-- Card 1: Saldo Disponible (Bóveda Personal) -->
+            <div class="relative rounded-2xl bg-surface-container-low/90 backdrop-blur-2xl p-space-md flex flex-col justify-between shadow-xl border border-primary-container/30 group overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary-container/10 rounded-full blur-2xl pointer-events-none group-hover:bg-primary-container/20 transition-all"></div>
+                <div class="flex flex-col gap-2 z-10">
+                    <div class="flex items-center justify-between">
+                        <span class="font-label-sm text-xs uppercase tracking-widest text-outline flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[18px] text-primary">account_balance_wallet</span>
+                            Saldo Disponible
+                        </span>
+                        <span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-surface-container-highest text-primary font-bold font-mono">#{{ player_id }}</span>
+                    </div>
+                    <div class="my-1">
+                        <span id="saldo-display" class="font-display-lg text-2xl lg:text-3xl text-primary font-extrabold font-mono drop-shadow-[0_0_12px_rgba(0,229,255,0.4)]">
+                            $ {{ "%.2f"|format(metrics.saldo|default(0.0)) }}
+                        </span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-outline-variant/15 z-10 text-[11px] font-label-sm text-on-surface-variant">
+                    <span class="flex items-center gap-1 text-tertiary">
+                        <span class="material-symbols-outlined text-[14px]">verified_user</span> Maze Bank OK
+                    </span>
+                    <a href="{{ url_for('views.trade') }}" class="text-primary hover:underline uppercase font-bold text-[10px]">Tradear →</a>
+                </div>
+            </div>
+
+            <!-- Card 2: Patrimonio Total Tasado -->
+            <div class="relative rounded-2xl bg-surface-container-low/90 backdrop-blur-2xl p-space-md flex flex-col justify-between shadow-xl border border-tertiary/30 group overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-tertiary/10 rounded-full blur-2xl pointer-events-none group-hover:bg-tertiary/20 transition-all"></div>
+                <div class="flex flex-col gap-2 z-10">
+                    <div class="flex items-center justify-between">
+                        <span class="font-label-sm text-xs uppercase tracking-widest text-outline flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[18px] text-tertiary">pie_chart</span>
+                            Patrimonio Total
+                        </span>
+                        <span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-tertiary/10 text-tertiary font-bold uppercase">Auditado</span>
+                    </div>
+                    <div class="my-1">
+                        <span id="patrimonio-display" class="font-display-lg text-2xl lg:text-3xl text-tertiary font-extrabold font-mono drop-shadow-[0_0_12px_rgba(91,233,173,0.4)]">
+                            $ {{ "%.2f"|format(metrics.patrimonio_total|default(0.0)) }}
+                        </span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-outline-variant/15 z-10 text-[11px] font-label-sm text-on-surface-variant">
+                    <span class="text-outline">Bienes: <b id="valor-bienes-display" class="text-tertiary">$ {{ "%.2f"|format(metrics.valor_inventario|default(0.0)) }}</b></span>
+                    <span class="text-[10px] text-outline uppercase font-mono">Net Worth</span>
+                </div>
+            </div>
+
+            <!-- Card 3: Capacidad de Inventario & Slots -->
+            <div class="relative rounded-2xl bg-surface-container-low/90 backdrop-blur-2xl p-space-md flex flex-col justify-between shadow-xl border border-secondary/30 group overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-secondary/10 rounded-full blur-2xl pointer-events-none group-hover:bg-secondary/20 transition-all"></div>
+                <div class="flex flex-col gap-2 z-10">
+                    <div class="flex items-center justify-between">
+                        <span class="font-label-sm text-xs uppercase tracking-widest text-outline flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[18px] text-secondary">inventory_2</span>
+                            Slots de Inventario
+                        </span>
+                        <span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-bold uppercase">RN007</span>
+                    </div>
+                    <div class="my-1">
+                        <span id="items-count-display" class="font-display-lg text-2xl lg:text-3xl text-secondary font-extrabold font-mono drop-shadow-[0_0_12px_rgba(70,238,224,0.4)]">
+                            {{ metrics.total_items|default(0) }} / {{ metrics.limite_bienes|default(100) }}
+                        </span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-outline-variant/15 z-10 text-[11px] font-label-sm text-on-surface-variant">
+                    <span id="items-status-display" class="text-on-surface font-mono text-[10px]">
+                        {{ metrics.items_libres|default(0) }} Libres • <span class="text-error font-bold">{{ metrics.items_con_deuda|default(0) }} Con Deuda</span>
+                    </span>
+                    <span class="text-secondary font-bold text-[10px] uppercase">Capacidad</span>
+                </div>
+            </div>
+
+            <!-- Card 4: Telemetría P2P & Red Escrow -->
+            <div class="relative rounded-2xl bg-surface-container-low/90 backdrop-blur-2xl p-space-md flex flex-col justify-between shadow-xl border border-outline-variant/30 group overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-surface-tint/10 rounded-full blur-2xl pointer-events-none group-hover:bg-surface-tint/20 transition-all"></div>
+                <div class="flex flex-col gap-2 z-10">
+                    <div class="flex items-center justify-between">
+                        <span class="font-label-sm text-xs uppercase tracking-widest text-outline flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[18px] text-primary">insights</span>
+                            Telemetría P2P
+                        </span>
+                        <span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-surface-container-highest text-tertiary font-bold uppercase">Escrow 256</span>
+                    </div>
+                    <div class="my-1">
+                        <span id="trades-count-display" class="font-display-lg text-2xl lg:text-3xl text-on-surface font-extrabold font-mono">
+                            {{ metrics.total_trades|default(0) }} <span class="text-sm font-normal text-outline">Trades</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-outline-variant/15 z-10 text-[11px] font-label-sm text-on-surface-variant">
+                    <span id="comision-display" class="text-primary font-mono text-[10px] font-bold">
+                        Tasa Red: {{ metrics.porcentaje_comision|default(5.0) }}% Drenaje
+                    </span>
+                    <span class="text-tertiary flex items-center gap-0.5 text-[10px]">
+                        <span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span> Tick 64
+                    </span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Section 2: Inventario de Bienes (Main Interactive Table Area) -->
+        <div class="rounded-2xl bg-surface-container-low/90 backdrop-blur-2xl p-space-lg flex flex-col gap-space-md shadow-xl border border-outline-variant/20">
+            
+            <!-- Table Header Bar -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pb-2 border-b border-outline-variant/15">
+                <div class="flex items-center gap-space-sm">
+                    <div class="w-3 h-3 rounded-full bg-primary-container shadow-[0_0_8px_#00e5ff]"></div>
+                    <div>
+                        <h2 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wider leading-none">Inventario de Bienes</h2>
+                        <span class="font-label-sm text-label-sm text-on-surface-variant uppercase mt-0.5 block">Gestión y Despliegue de Propiedades para Negociación</span>
+                    </div>
+                </div>
+
+                <a href="{{ url_for('views.trade') }}" class="inline-flex items-center gap-1.5 px-space-md py-1.5 rounded-xl bg-primary-container text-on-primary-container font-headline-sm text-sm uppercase tracking-wider font-bold shadow-[0_0_12px_rgba(0,229,255,0.3)] hover:brightness-110 active:scale-95 transition-all self-start sm:self-auto">
+                    <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                    <span>Iniciar Nuevo Trade</span>
+                </a>
+            </div>
+
+            <!-- Data Table Container -->
+            <div class="overflow-x-auto w-full">
+                <table class="w-full text-left font-body-md text-body-md border-collapse">
+                    <thead>
+                        <tr class="bg-surface-container-lowest/80 text-outline font-label-md text-label-md uppercase tracking-wider">
+                            <th class="py-space-sm px-space-md rounded-l-xl">Ítem</th>
+                            <th class="py-space-sm px-space-md text-right">Precio Estimado</th>
+                            <th class="py-space-sm px-space-md text-center">Estado de Gravamen</th>
+                            <th class="py-space-sm px-space-md text-right rounded-r-xl">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-list" class="font-label-md text-label-md divide-y divide-outline-variant/10">
+                        <!-- Filas cargadas dinámicamente vía AJAX por main.js -->
+                        <tr>
+                            <td colspan="4" class="text-center py-8 text-on-surface-variant">
+                                <span class="material-symbols-outlined text-[24px] animate-spin text-primary">sync</span>
+                                <p class="mt-2 font-label-sm">Cargando inventario del jugador...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Inventory Footer Summary Bar -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm pt-space-xs text-outline font-label-sm text-label-sm border-t border-outline-variant/10">
+                <div class="flex items-center gap-space-sm">
+                    <span class="material-symbols-outlined text-[16px] text-tertiary">inventory_2</span>
+                    <span>SINCRONIZACIÓN EN TIEMPO REAL CON BASE DE DATOS</span>
+                </div>
+                <div class="flex items-center gap-space-md">
+                    <a class="text-primary hover:underline flex items-center gap-1 uppercase font-semibold" href="{{ url_for('views.trade') }}">
+                        <span>Ir a Sala de Comercio</span>
+                        <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
