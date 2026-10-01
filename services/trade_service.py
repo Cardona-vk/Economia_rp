@@ -202,7 +202,10 @@ def consultar_ofertas_pendientes(id_jugador):
             
             for of in ofertas:
                 raw_ids = of.get('items_j1_ids') or of.get('id_item_j1')
-                of['items_j1_details'] = _get_items_details(raw_ids, cursor=cursor)
+                details = _get_items_details(raw_ids, cursor=cursor)
+                of['items_j1_details'] = details
+                of['items_list'] = details
+                of['emisor'] = of.get('usuario_j1') or f"Operador #{of.get('id_jugador_1')}"
 
             return ofertas, "Ofertas pendientes obtenidas"
     except Exception as e:

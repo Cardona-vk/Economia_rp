@@ -32,10 +32,17 @@ def admin_required(f):
             return redirect(url_for('auth.login'))
         
         try:
-            with get_db_cursor() as (cursor, _):
+            with get_db_cursor(dictionary=True) as (cursor, _):
                 cursor.execute("SELECT es_admin FROM jugadores WHERE id_jugador = %s", (user_id,))
                 res = cursor.fetchone()
-                if not res or not res[0]:
+                es_admin = False
+                if res:
+                    if isinstance(res, dict):
+                        es_admin = bool(res.get('es_admin'))
+                    else:
+                        es_admin = bool(res[0])
+                
+                if not es_admin:
                     if request.path.startswith('/api/'):
                         return jsonify({"success": False, "message": "Acceso denegado: solo administradores."}), 403
                     return "Acceso denegado, esta sección es solo para administradores.", 403

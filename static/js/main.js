@@ -11,6 +11,8 @@
 
 // Global State
 let currentTradeId = null;
+let roomInitialLoadedTradeId = null;
+let hasUserEditedTradeOffer = false;
 let pollingInterval = null;
 let roomSecondsRemaining = null;
 let roomTimerInterval = null;
@@ -339,7 +341,10 @@ function updateInviteSelectedCount() {
     }
 }
 
-function updateRoomSelectedItems() {
+function updateRoomSelectedItems(markEdited = true) {
+    if (markEdited) {
+        hasUserEditedTradeOffer = true;
+    }
     const checked = document.querySelectorAll('input[name="room_my_items"]:checked');
     const countEl = document.getElementById('room-selected-count');
     if (countEl) {
@@ -613,8 +618,9 @@ async function checkIncomingTrades() {
                         const card = document.createElement('div');
                         card.className = 'flex flex-col rounded-2xl bg-surface-container/90 backdrop-blur-2xl p-4 shadow-xl gap-3 border border-secondary/30 relative overflow-hidden';
                         
+                        const senderName = trade.emisor || trade.usuario_j1 || `Operador #${trade.id_jugador_1}`;
                         const montoFmt = Number(trade.monto_j1 || 0).toLocaleString('en-US', {minimumFractionDigits: 2});
-                        const itemsList = trade.items_list || [];
+                        const itemsList = trade.items_list || trade.items_j1_details || [];
                         const seconds = trade.segundos_restantes !== undefined ? trade.segundos_restantes : 120;
 
                         let itemsHtml = '<span class="font-bold text-on-surface-variant text-xs">Sin Ítems Adjuntos</span>';
@@ -633,7 +639,7 @@ async function checkIncomingTrades() {
                                     </div>
                                     <div class="flex flex-col">
                                         <div class="flex items-center gap-1.5">
-                                            <span class="font-headline-sm text-sm text-on-surface font-bold">${trade.emisor}</span>
+                                            <span class="font-headline-sm text-sm text-on-surface font-bold">${senderName}</span>
                                             <span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-surface-container-highest text-primary font-mono font-bold">#${trade.id_jugador_1}</span>
                                         </div>
                                         <span class="font-body-sm text-xs text-on-surface-variant">te invita a comerciar</span>
@@ -704,6 +710,8 @@ async function checkIncomingTrades() {
                     roomTimerInterval = null;
                 }
                 currentTradeId = null;
+                roomInitialLoadedTradeId = null;
+                hasUserEditedTradeOffer = false;
             }
         }
     } catch (e) {
@@ -851,8 +859,11 @@ async function syncTradeTable() {
                 : '<span class="text-on-surface-variant flex items-center gap-1">⏳ Pendiente de Confirmación</span>';
         }
 
-        // My Offer initial sync if user has not yet interacted with room inputs
-        if (!window.hasUserEditedTradeOffer) {
+        // My Offer initial sync: ONLY populate once when first joining the trade room
+        if (roomInitialLoadedTradeId !== currentTradeId) {
+            roomInitialLoadedTradeId = currentTradeId;
+            hasUserEditedTradeOffer = false;
+
             const myRawIds = isPlayer1 ? (trade.items_j1_ids || (trade.id_item_j1 ? String(trade.id_item_j1) : '')) : (trade.items_j2_ids || (trade.id_item_j2 ? String(trade.id_item_j2) : ''));
             const myIdsArray = myRawIds ? String(myRawIds).split(',').map(s => s.trim()) : [];
             const myMoney = isPlayer1 ? trade.monto_j1 : trade.monto_j2;
@@ -860,12 +871,14 @@ async function syncTradeTable() {
             document.querySelectorAll('input[name="room_my_items"]').forEach(cb => {
                 cb.checked = myIdsArray.includes(String(cb.value));
             });
-            updateRoomSelectedItems();
+            updateRoomSelectedItems(false);
 
             const moneyInput = document.getElementById('trade-money-input');
-            if (moneyInput && (moneyInput.value === '' || moneyInput.value === '0' || moneyInput.value === '0.00')) {
+            if (moneyInput) {
                 if (parseFloat(myMoney) > 0) {
                     moneyInput.value = parseFloat(myMoney);
+                } else if (!moneyInput.value) {
+                    moneyInput.value = '0';
                 }
             }
         }
@@ -984,10 +997,18 @@ async function cancelCurrentTrade(silent = false) {
         const result = await response.json();
         if (result.success) {
             if (!silent) showHudToast("Negociación cancelada.", 'info');
-            setTimeout(() => { location.reload(); }, 600);
+            currentTradeId = null;
+            roomInitialLoadedTradeId = null;
+            hasUserEditedTradeOffer = false;
+            if (pollingInterval) clearInterval(pollingInterval);
+            if (roomTimerInterval) clearInterval(roomTimerInterval);
+            setTimeout(() => { window.location.href = '/trade'; }, 400);
+        } else {
+            showHudToast(result.message || "Error al cancelar", 'error');
         }
     } catch (e) {
         console.error("[Cancel Error]", e);
+        showHudToast("Error de conexión al cancelar negociación.", 'error');
     }
 }
 
@@ -1232,9 +1253,6 @@ function triggerLiveViewUpdates() {
     }
 
     // 2. Trade View
-    if (document.getElementById('invite-items-grid')) {
-        refreshTradeInventory();
-    }
     if (document.getElementById('trades-pending-list')) {
         checkIncomingTrades();
     }
@@ -1247,81 +1265,6 @@ function triggerLiveViewUpdates() {
     // 4. Admin View
     if (typeof refreshAdminData === 'function') {
         refreshAdminData();
-    }
-}
-
-async function refreshTradeInventory() {
-    const inviteGrid = document.getElementById('invite-items-grid');
-    const roomGrid = document.getElementById('room-my-items-grid');
-    if (!inviteGrid && !roomGrid) return;
-
-    try {
-        const response = await fetch('/api/dashboard');
-        if (!response.ok) return;
-        const data = await response.json();
-        const items = data.inventario || [];
-
-        // 1. Update Invite Grid
-        if (inviteGrid) {
-            if (items.length === 0) {
-                inviteGrid.innerHTML = '<p class="text-xs text-on-surface-variant col-span-2 text-center py-4">No posees ítems transferibles.</p>';
-            } else {
-                const currentlyChecked = Array.from(document.querySelectorAll('input[name="invite_items"]:checked')).map(cb => cb.value);
-                inviteGrid.innerHTML = '';
-                items.forEach(item => {
-                    const isChecked = currentlyChecked.includes(String(item.id_item));
-                    const itemData = ItemCatalog.getItemData(item.nombre);
-                    const label = document.createElement('label');
-                    label.className = `flex items-center gap-2.5 p-2 rounded-lg bg-surface-container/60 hover:bg-surface-container cursor-pointer border border-outline-variant/10 transition-all select-none group ${isChecked ? 'border-primary bg-primary-container/10' : ''}`;
-                    
-                    label.innerHTML = `
-                        <input type="checkbox" name="invite_items" value="${item.id_item}" data-name="${item.nombre}" data-price="${item.precio}" ${isChecked ? 'checked' : ''} onchange="updateInviteSelectedCount()"
-                               class="rounded bg-surface-container-lowest border-outline-variant text-primary focus:ring-primary w-4 h-4 cursor-pointer"/>
-                        <div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center text-primary text-xs shrink-0 overflow-hidden ${itemData.rarity ? 'rarity-' + itemData.rarity : ''}">
-                            <img src="${itemData.image}" alt="${item.nombre}" class="w-full h-full object-cover"/>
-                        </div>
-                        <div class="flex flex-col min-w-0">
-                            <span class="font-headline-sm text-xs text-on-surface font-semibold truncate group-hover:text-primary transition-colors">${item.nombre}</span>
-                            <span class="font-label-sm text-[10px] text-tertiary font-mono">$ ${Number(item.precio).toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
-                        </div>
-                    `;
-                    inviteGrid.appendChild(label);
-                });
-            }
-            updateInviteSelectedCount();
-        }
-
-        // 2. Update Room Grid
-        if (roomGrid) {
-            if (items.length === 0) {
-                roomGrid.innerHTML = '<p class="text-center py-3 text-on-surface-variant font-label-sm text-xs">No posees ítems en tu inventario.</p>';
-            } else {
-                const currentlyChecked = Array.from(document.querySelectorAll('input[name="room_my_items"]:checked')).map(cb => cb.value);
-                roomGrid.innerHTML = '';
-                items.forEach(item => {
-                    const isChecked = currentlyChecked.includes(String(item.id_item));
-                    const itemData = ItemCatalog.getItemData(item.nombre);
-                    const label = document.createElement('label');
-                    label.className = `flex items-center gap-2.5 p-2 rounded-lg bg-surface-container/60 hover:bg-surface-container cursor-pointer border border-outline-variant/10 transition-all select-none group ${isChecked ? 'border-primary bg-primary-container/10' : ''}`;
-                    
-                    label.innerHTML = `
-                        <input type="checkbox" name="room_my_items" value="${item.id_item}" data-name="${item.nombre}" data-price="${item.precio}" ${isChecked ? 'checked' : ''} onchange="window.hasUserEditedTradeOffer=true; updateRoomSelectedItems();"
-                               class="rounded bg-surface-container-lowest border-outline-variant text-primary focus:ring-primary w-4 h-4 cursor-pointer"/>
-                        <div class="w-7 h-7 rounded bg-surface-container-high flex items-center justify-center text-primary text-xs shrink-0 overflow-hidden ${itemData.rarity ? 'rarity-' + itemData.rarity : ''}">
-                            <img src="${itemData.image}" alt="${item.nombre}" class="w-full h-full object-cover"/>
-                        </div>
-                        <div class="flex flex-col min-w-0 flex-1">
-                            <span class="font-headline-sm text-xs text-on-surface truncate font-semibold">${item.nombre}</span>
-                            <span class="font-label-sm text-[10px] text-tertiary font-mono">$ ${Number(item.precio).toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
-                        </div>
-                    `;
-                    roomGrid.appendChild(label);
-                });
-            }
-            updateRoomSelectedItems();
-        }
-    } catch (e) {
-        console.error("[Refresh Trade Inv Error]", e);
     }
 }
 

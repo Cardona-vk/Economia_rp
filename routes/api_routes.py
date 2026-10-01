@@ -189,11 +189,12 @@ def api_trade_confirm():
 def api_trade_cancel():
     data = request.get_json(silent=True) or {}
     id_trade = data.get('id_trade')
+    user_id = get_current_user_id()
     if not id_trade:
         return jsonify({"success": False, "message": "ID de tradeo faltante"}), 400
 
-    success, msg = trade_service.cancelar_tradeo(id_trade)
-    return jsonify({"success": success, "message": msg})
+    success, msg = trade_service.cancelar_tradeo(id_trade, user_id)
+    return jsonify({"success": success, "message": msg}), (200 if success else 400)
 
 # ==============================================================================
 # --- MÓDULO DE ADMINISTRACIÓN TOTAL (SYS_ADMIN_DECK_V2.4) ---

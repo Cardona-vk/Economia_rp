@@ -18,7 +18,8 @@ def login():
         if success:
             session['user_id'] = result['id_usuario'] if isinstance(result, dict) else result
             session['username'] = usuario
-            return redirect(url_for('dashboard'))
+            session['es_admin'] = bool(result.get('es_admin')) if isinstance(result, dict) else False
+            return redirect(url_for('views.dashboard'))
         else:
             message = result
 
