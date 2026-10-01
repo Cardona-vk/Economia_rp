@@ -696,8 +696,8 @@ async function checkIncomingTrades() {
 
                 if (!pollingInterval) {
                     pollingInterval = setInterval(syncTradeTable, 1500);
+                    syncTradeTable();
                 }
-                syncTradeTable();
             } else {
                 if (activePanel) activePanel.style.display = 'none';
                 if (negPanel) negPanel.style.display = 'grid';
@@ -859,26 +859,27 @@ async function syncTradeTable() {
                 : '<span class="text-on-surface-variant flex items-center gap-1">⏳ Pendiente de Confirmación</span>';
         }
 
-        // My Offer initial sync: ONLY populate once when first joining the trade room
+        // My Offer initial sync: ONLY populate once when first entering the active trade room
         if (roomInitialLoadedTradeId !== currentTradeId) {
             roomInitialLoadedTradeId = currentTradeId;
-            hasUserEditedTradeOffer = false;
 
             const myRawIds = isPlayer1 ? (trade.items_j1_ids || (trade.id_item_j1 ? String(trade.id_item_j1) : '')) : (trade.items_j2_ids || (trade.id_item_j2 ? String(trade.id_item_j2) : ''));
             const myIdsArray = myRawIds ? String(myRawIds).split(',').map(s => s.trim()) : [];
             const myMoney = isPlayer1 ? trade.monto_j1 : trade.monto_j2;
 
-            document.querySelectorAll('input[name="room_my_items"]').forEach(cb => {
-                cb.checked = myIdsArray.includes(String(cb.value));
-            });
-            updateRoomSelectedItems(false);
+            if (myIdsArray.length > 0) {
+                document.querySelectorAll('input[name="room_my_items"]').forEach(cb => {
+                    if (myIdsArray.includes(String(cb.value))) {
+                        cb.checked = true;
+                    }
+                });
+                updateRoomSelectedItems();
+            }
 
             const moneyInput = document.getElementById('trade-money-input');
-            if (moneyInput) {
+            if (moneyInput && (!moneyInput.value || moneyInput.value === '0' || moneyInput.value === '0.00')) {
                 if (parseFloat(myMoney) > 0) {
                     moneyInput.value = parseFloat(myMoney);
-                } else if (!moneyInput.value) {
-                    moneyInput.value = '0';
                 }
             }
         }
