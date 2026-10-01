@@ -1078,33 +1078,119 @@ function openInvoiceModal(mov) {
     const modal = document.getElementById('invoice-modal');
     if (!modal || !mov) return;
 
-    const montoNum = parseFloat(mov.monto || 0);
-    const montoFmt = montoNum.toLocaleString('en-US', {minimumFractionDigits: 2});
     const trxId = mov.id_transaccion || Math.floor(1000 + Math.random() * 9000);
+    const isTrade = mov.tipo_transaccion === 'TRADEO_P2P';
+    
+    const p1Name = mov.usuario_j1 ? `${mov.usuario_j1} #${mov.id_jugador_1}` : (mov.id_jugador_1 ? `Operador #${mov.id_jugador_1}` : 'N/A');
+    const p2Name = mov.usuario_j2 ? `${mov.usuario_j2} #${mov.id_jugador_2}` : (mov.id_jugador_2 ? `Operador #${mov.id_jugador_2}` : 'N/A');
+
+    const p1Money = parseFloat(mov.monto_j1 || 0);
+    const p2Money = parseFloat(mov.monto_j2 || 0);
+    const totalCash = p1Money + p2Money;
+
+    const p1Items = mov.items_j1_details || [];
+    const p2Items = mov.items_j2_details || [];
+
+    // Calculate total base value (item values + cash)
+    let p1ItemsValue = p1Items.reduce((acc, it) => acc + parseFloat(it.precio || 0), 0);
+    let p2ItemsValue = p2Items.reduce((acc, it) => acc + parseFloat(it.precio || 0), 0);
+    let totalBaseValue = p1ItemsValue + p2ItemsValue + totalCash;
+    if (totalBaseValue === 0) totalBaseValue = parseFloat(mov.monto || 0);
+
+    const commissionRate = mov.porcentaje_comision !== undefined ? mov.porcentaje_comision : 5.0;
+    const commissionValue = mov.comision_total !== undefined ? parseFloat(mov.comision_total) : (totalCash * (commissionRate / 100.0));
 
     // Populate Fields
     document.getElementById('invoice-id').innerText = `#TRX-${String(trxId).padStart(6, '0')}-RP`;
     document.getElementById('invoice-date').innerText = mov.fecha_hora || 'REGISTRO INMUTABLE';
     document.getElementById('invoice-type').innerText = mov.tipo_transaccion || 'TRADEO_P2P';
     document.getElementById('invoice-status').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> ${mov.estado_transaccion || 'COMPLETADA'}`;
-    document.getElementById('invoice-subtotal').innerText = `$ ${montoFmt}`;
-    document.getElementById('invoice-total').innerText = `$ ${montoFmt}`;
+    
+    // Participants Banner
+    const partBanner = document.getElementById('invoice-participants-banner');
+    const p1NameEl = document.getElementById('invoice-player1-name');
+    const p2NameEl = document.getElementById('invoice-player2-name');
+
+    if (partBanner) {
+        if (isTrade) {
+            partBanner.style.display = 'grid';
+            if (p1NameEl) p1NameEl.innerText = p1Name;
+            if (p2NameEl) p2NameEl.innerText = p2Name;
+        } else {
+            partBanner.style.display = 'none';
+        }
+    }
+
+    // Financial Breakdown
+    document.getElementById('invoice-subtotal').innerText = `$ ${totalBaseValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    const commRateEl = document.getElementById('invoice-commission-rate');
+    if (commRateEl) commRateEl.innerText = `${commissionRate}%`;
+    document.getElementById('invoice-tax').innerText = `$ ${commissionValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('invoice-total').innerText = `$ ${totalBaseValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     
     // Hash
     document.getElementById('invoice-hash').innerText = `0x${trxId}E9A${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
 
-    // Render Items
+    // Render Items & Bilateral Breakdown
     const itemsContainer = document.getElementById('invoice-items-container');
     if (itemsContainer) {
-        if (mov.nombre_item) {
-            itemsContainer.innerHTML = ItemCatalog.renderItemCard({ nombre: mov.nombre_item, precio: mov.monto });
+        if (isTrade) {
+            let p1ItemsHtml = '<p class="font-label-sm text-xs text-on-surface-variant py-2 text-center">Sin bienes físicos entregados</p>';
+            if (p1Items.length > 0) {
+                p1ItemsHtml = p1Items.map(it => ItemCatalog.renderItemCard(it)).join('');
+            }
+
+            let p2ItemsHtml = '<p class="font-label-sm text-xs text-on-surface-variant py-2 text-center">Sin bienes físicos entregados</p>';
+            if (p2Items.length > 0) {
+                p2ItemsHtml = p2Items.map(it => ItemCatalog.renderItemCard(it)).join('');
+            }
+
+            itemsContainer.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <!-- Lado Operador 1 -->
+                    <div class="flex flex-col gap-2 p-3.5 rounded-xl bg-surface-container-low/90 border border-primary/30">
+                        <div class="flex items-center justify-between pb-2 border-b border-outline-variant/20">
+                            <span class="font-headline-sm text-xs uppercase text-primary font-bold flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-primary"></span>
+                                OFERTA DE ${mov.usuario_j1 || 'OPERADOR 1'}
+                            </span>
+                            <span class="font-mono font-bold text-xs text-tertiary">$ ${p1Money.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                        </div>
+                        <div class="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
+                            ${p1ItemsHtml}
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-outline-variant/15 text-xs">
+                            <span class="text-outline uppercase text-[10px] font-bold">Efectivo entregado:</span>
+                            <span class="font-mono font-bold text-tertiary">$ ${p1Money.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                        </div>
+                    </div>
+
+                    <!-- Lado Operador 2 -->
+                    <div class="flex flex-col gap-2 p-3.5 rounded-xl bg-surface-container-low/90 border border-secondary/30">
+                        <div class="flex items-center justify-between pb-2 border-b border-outline-variant/20">
+                            <span class="font-headline-sm text-xs uppercase text-secondary font-bold flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                                OFERTA DE ${mov.usuario_j2 || 'OPERADOR 2'}
+                            </span>
+                            <span class="font-mono font-bold text-xs text-tertiary">$ ${p2Money.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                        </div>
+                        <div class="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
+                            ${p2ItemsHtml}
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-outline-variant/15 text-xs">
+                            <span class="text-outline uppercase text-[10px] font-bold">Efectivo entregado:</span>
+                            <span class="font-mono font-bold text-tertiary">$ ${p2Money.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
         } else if (mov.tipo_transaccion === 'PAGO_SALARIO') {
             itemsContainer.innerHTML = `
-                <div class="flex items-center gap-3 p-3.5 rounded-xl bg-surface-container-high/60 border border-outline-variant/20">
+                <div class="flex items-center gap-3 p-3.5 rounded-xl bg-surface-container-high/60 border border-primary/20">
                     <span class="material-symbols-outlined text-primary text-[28px]">work</span>
                     <div class="flex flex-col">
-                        <span class="font-headline-sm text-xs font-bold text-on-surface">JORNADA LABORAL CERTIFICADA</span>
-                        <span class="font-label-sm text-[10px] text-on-surface-variant">Liquidación directa desde cuenta de tesorería del servidor</span>
+                        <span class="font-headline-sm text-xs font-bold text-on-surface">${mov.nombre_empleo || 'JORNADA LABORAL CERTIFICADA'}</span>
+                        <span class="font-label-sm text-[10px] text-on-surface-variant">${mov.horas_trabajadas || 1} horas trabajadas • Liquidación acreditada por Tesorería</span>
                     </div>
                 </div>
             `;

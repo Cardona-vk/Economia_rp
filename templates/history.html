@@ -147,6 +147,7 @@
             </div>
 
             <!-- Invoice Status & Parties Metadata -->
+            <!-- Invoice Status & Parties Metadata -->
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 rounded-xl bg-surface-container-lowest/80 border border-outline-variant/15">
                 <div class="flex flex-col">
                     <span class="font-label-sm text-[10px] text-outline uppercase">ESTADO</span>
@@ -164,11 +165,33 @@
                 </div>
             </div>
 
+            <!-- Trade Participants Banner -->
+            <div id="invoice-participants-banner" class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-surface-container-high/60 border border-outline-variant/20">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-primary-container/15 flex items-center justify-center text-primary font-bold shrink-0 border border-primary/20">
+                        <span class="material-symbols-outlined text-[18px]">person</span>
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                        <span class="font-label-sm text-[10px] text-outline uppercase font-bold">OPERADOR 1</span>
+                        <span class="font-headline-sm text-xs text-primary font-bold truncate" id="invoice-player1-name">--</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-secondary-container/15 flex items-center justify-center text-secondary font-bold shrink-0 border border-secondary/20">
+                        <span class="material-symbols-outlined text-[18px]">person</span>
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                        <span class="font-label-sm text-[10px] text-outline uppercase font-bold">OPERADOR 2</span>
+                        <span class="font-headline-sm text-secondary font-bold truncate" id="invoice-player2-name">--</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Exchanged Items Visual Section -->
             <div class="flex flex-col gap-2">
-                <span class="font-label-md text-xs text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+                <span class="font-label-md text-xs text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5 font-bold">
                     <span class="material-symbols-outlined text-[16px] text-primary">inventory_2</span>
-                    DESGLOSE DE BIENES E ÍTEMS INVOLUCRADOS
+                    DESGLOSE DE BIENES Y FONDOS INTERCAMBIADOS
                 </span>
                 <div id="invoice-items-container" class="flex flex-col gap-2">
                     <!-- Dynamic items rendered by JS -->
@@ -182,8 +205,8 @@
                     <span id="invoice-subtotal" class="font-mono text-on-surface">$ 0.00</span>
                 </div>
                 <div class="flex justify-between items-center text-xs font-label-md text-on-surface-variant">
-                    <span>Tasa de Auditoría / Drenaje de Sistema (0% - 5%):</span>
-                    <span id="invoice-tax" class="font-mono text-secondary">$ 0.00</span>
+                    <span>Tasa de Auditoría / Comisión de Red (<span id="invoice-commission-rate">5%</span>):</span>
+                    <span id="invoice-tax" class="font-mono text-secondary font-bold">$ 0.00</span>
                 </div>
                 <div class="h-px bg-outline-variant/20 my-1"></div>
                 <div class="flex justify-between items-center text-sm font-headline-sm font-bold text-on-surface">
