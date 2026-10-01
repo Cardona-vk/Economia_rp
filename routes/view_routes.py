@@ -4,6 +4,11 @@ from services import player_service
 
 views_bp = Blueprint('views', __name__)
 
+@views_bp.route('/health', endpoint='health')
+@views_bp.route('/healthz', endpoint='healthz')
+def health():
+    return {"status": "ok", "service": "Economy RP"}, 200
+
 @views_bp.route('/', endpoint='index')
 def index():
     if get_current_user_id():
