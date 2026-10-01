@@ -28,21 +28,24 @@ def _parse_id_list(val):
         return list(dict.fromkeys(result))
     return []
 
-def _get_items_details(item_ids):
+def _get_items_details(item_ids, cursor=None):
     """Recupera los detalles completos de una lista de IDs de ítems."""
     clean_ids = _parse_id_list(item_ids)
     if not clean_ids:
         return []
     try:
-        with get_db_cursor(dictionary=True) as (cursor, _):
-            format_strings = ','.join(['%s'] * len(clean_ids))
-            query = f"""
-            SELECT id_item, id_jugador, nombre, precio, fecha, tiene_deuda, antiguedad_dias, estado_custodia, tipo_propietario
-            FROM items
-            WHERE id_item IN ({format_strings})
-            """
+        format_strings = ','.join(['%s'] * len(clean_ids))
+        query = f"""
+        SELECT id_item, id_jugador, nombre, precio, fecha, tiene_deuda, antiguedad_dias, estado_custodia, tipo_propietario
+        FROM items
+        WHERE id_item IN ({format_strings})
+        """
+        if cursor is not None:
             cursor.execute(query, tuple(clean_ids))
             return cursor.fetchall() or []
+        with get_db_cursor(dictionary=True) as (cur, _):
+            cur.execute(query, tuple(clean_ids))
+            return cur.fetchall() or []
     except Exception:
         return []
 
@@ -199,7 +202,7 @@ def consultar_ofertas_pendientes(id_jugador):
             
             for of in ofertas:
                 raw_ids = of.get('items_j1_ids') or of.get('id_item_j1')
-                of['items_j1_details'] = _get_items_details(raw_ids)
+                of['items_j1_details'] = _get_items_details(raw_ids, cursor=cursor)
 
             return ofertas, "Ofertas pendientes obtenidas"
     except Exception as e:
@@ -243,7 +246,7 @@ def consultar_mesa_activa(id_jugador):
                 JOIN jugadores j1 ON n.id_jugador_1 = j1.id_jugador
                 JOIN jugadores j2 ON n.id_jugador_2 = j2.id_jugador
                 WHERE (n.id_jugador_1 = %s OR n.id_jugador_2 = %s)
-                  AND n.estado IN ('PENDIENTE', 'ACEPTADO', 'EN_PROCESO', 'ESPERANDO_CONFIRMACION_FINAL')
+                  AND n.estado IN ('ACEPTADO', 'EN_PROCESO', 'ESPERANDO_CONFIRMACION_FINAL')
                 LIMIT 1
             """, (id_clean, id_clean))
             trade = cursor.fetchone()
@@ -252,8 +255,8 @@ def consultar_mesa_activa(id_jugador):
 
             ids_j1 = trade.get('items_j1_ids') or trade.get('id_item_j1')
             ids_j2 = trade.get('items_j2_ids') or trade.get('id_item_j2')
-            details_j1 = _get_items_details(ids_j1)
-            details_j2 = _get_items_details(ids_j2)
+            details_j1 = _get_items_details(ids_j1, cursor=cursor)
+            details_j2 = _get_items_details(ids_j2, cursor=cursor)
             trade['items_j1_details'] = details_j1
             trade['items_j2_details'] = details_j2
             trade['items_j1_list'] = details_j1
@@ -301,8 +304,8 @@ def obtener_detalle_trade(id_trade):
 
             ids_j1 = trade.get('items_j1_ids') or trade.get('id_item_j1')
             ids_j2 = trade.get('items_j2_ids') or trade.get('id_item_j2')
-            details_j1 = _get_items_details(ids_j1)
-            details_j2 = _get_items_details(ids_j2)
+            details_j1 = _get_items_details(ids_j1, cursor=cursor)
+            details_j2 = _get_items_details(ids_j2, cursor=cursor)
             trade['items_j1_details'] = details_j1
             trade['items_j2_details'] = details_j2
             trade['items_j1_list'] = details_j1
@@ -402,32 +405,33 @@ def lock_trade_player(id_trade, id_jugador):
     id_trade_clean = ensure_scalar(id_trade)
     id_jugador_clean = ensure_scalar(id_jugador)
     if not id_trade_clean or not id_jugador_clean:
-        return False, "Parámetros inválidos"
+        return False, "Parámetros inválidos", False
 
     try:
         with get_db_cursor(commit=True, dictionary=True) as (cursor, _):
             cursor.execute("SELECT id_jugador_1, id_jugador_2, estado FROM negociaciones_tradeos WHERE id_negociacion = %s", (id_trade_clean,))
             trade = cursor.fetchone()
-            if not trade or trade['estado'] not in ('PENDIENTE', 'ACEPTADO', 'EN_PROCESO', 'ESPERANDO_CONFIRMACION_FINAL'):
-                return False, "Negociación no disponible."
+            if not trade or trade['estado'] not in ('ACEPTADO', 'EN_PROCESO', 'ESPERANDO_CONFIRMACION_FINAL'):
+                return False, "Negociación no disponible o ya finalizada.", False
 
             if trade['id_jugador_1'] == id_jugador_clean:
                 cursor.execute("UPDATE negociaciones_tradeos SET confirmacion_j1 = TRUE WHERE id_negociacion = %s", (id_trade_clean,))
             elif trade['id_jugador_2'] == id_jugador_clean:
                 cursor.execute("UPDATE negociaciones_tradeos SET confirmacion_j2 = TRUE WHERE id_negociacion = %s", (id_trade_clean,))
             else:
-                return False, "Operador no participante."
+                return False, "Operador no participante.", False
 
             cursor.execute("SELECT confirmacion_j1, confirmacion_j2 FROM negociaciones_tradeos WHERE id_negociacion = %s", (id_trade_clean,))
             check = cursor.fetchone()
             
-            if check and check['confirmacion_j1'] and check['confirmacion_j2']:
+            both = bool(check and check['confirmacion_j1'] and check['confirmacion_j2'])
+            if both:
                 cursor.execute("UPDATE negociaciones_tradeos SET estado = 'ESPERANDO_CONFIRMACION_FINAL' WHERE id_negociacion = %s", (id_trade_clean,))
-                return True, "Ambos operadores han confirmado los términos (RN010). Listos para liquidar."
+                return True, "Ambos operadores han confirmado los términos (RN010). Listos para liquidar.", True
 
-            return True, "Oferta confirmada. Esperando al otro operador."
+            return True, "Oferta confirmada. Esperando confirmación del otro operador.", False
     except Exception as e:
-        return False, str(e)
+        return False, str(e), False
 
 def finalizar_tradeo(id_trade):
     """

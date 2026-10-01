@@ -173,17 +173,16 @@ def api_trade_confirm():
     if not trade_data:
         return jsonify({"success": False, "message": "Tradeo no encontrado"}), 404
 
-    is_p1 = (trade_data['id_jugador_1'] == user_id)
-    success, msg, both_confirmed = trade_service.lock_trade_player(id_trade, is_p1)
+    success, msg, both_confirmed = trade_service.lock_trade_player(id_trade, user_id)
 
     if success and both_confirmed:
         final_success, final_msg = trade_service.finalizar_tradeo(id_trade)
         if final_success:
-            return jsonify({"success": True, "message": "Tradeo completado exitosamente"})
+            return jsonify({"success": True, "message": "Tradeo completado exitosamente", "completed": True})
         else:
             return jsonify({"success": False, "message": f"Error al finalizar: {final_msg}"}), 500
 
-    return jsonify({"success": success, "message": msg})
+    return jsonify({"success": success, "message": msg, "completed": False})
 
 @api_bp.route('/trades/cancel', methods=['POST'])
 @login_required

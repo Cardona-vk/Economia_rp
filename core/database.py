@@ -11,13 +11,14 @@ def _get_pool():
         try:
             _db_pool = pooling.MySQLConnectionPool(
                 pool_name="economy_pool",
-                pool_size=10,
+                pool_size=5,
                 pool_reset_session=True,
                 host=Config.DB_HOST,
                 user=Config.DB_USER,
                 password=Config.DB_PASSWORD,
                 database=Config.DB_NAME,
-                port=Config.DB_PORT
+                port=Config.DB_PORT,
+                connect_timeout=8
             )
         except Exception as e:
             print(f"[DB Pool Error] Fallo al crear pool: {e}")

@@ -878,12 +878,19 @@ async function syncTradeTable() {
 // 11. UPDATE & CONFIRM TRADE OFFERS
 // ==========================================
 async function updateTradeOffer() {
+    const btn = document.getElementById('btn-update-offer');
     const checkedItems = Array.from(document.querySelectorAll('input[name="room_my_items"]:checked')).map(cb => cb.value);
     const money = document.getElementById('trade-money-input')?.value || 0;
 
     if (!currentTradeId) {
         showHudToast("No hay una sala de trade activa.", 'error');
         return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-60', 'pointer-events-none');
+        btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">sync</span><span>ACTUALIZANDO...</span>';
     }
 
     try {
@@ -899,19 +906,33 @@ async function updateTradeOffer() {
         const result = await response.json();
         if (result.success) {
             showHudToast("Oferta actualizada. Confirmaciones y tiempo reiniciados.", 'info');
-            syncTradeTable();
+            await syncTradeTable();
         } else {
             showHudToast(result.message, 'error');
         }
     } catch (e) {
         console.error("[Update Offer Error]", e);
+        showHudToast("Error de conexión al actualizar oferta.", 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-60', 'pointer-events-none');
+            btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">sync</span><span>ACTUALIZAR OFERTA</span>';
+        }
     }
 }
 
 async function confirmTrade() {
+    const btn = document.getElementById('btn-confirm-offer');
     if (!currentTradeId) {
         showHudToast("No hay una sala de trade activa.", 'error');
         return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-60', 'pointer-events-none');
+        btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">hourglass_empty</span><span>CONFIRMANDO...</span>';
     }
 
     try {
@@ -923,12 +944,19 @@ async function confirmTrade() {
         const result = await response.json();
         if (result.success) {
             showHudToast("✓ Tu oferta ha sido bloqueada y confirmada.", 'success');
-            syncTradeTable();
+            await syncTradeTable();
         } else {
             showHudToast(result.message, 'error');
         }
     } catch (e) {
         console.error("[Confirm Error]", e);
+        showHudToast("Error de conexión al confirmar trade.", 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-60', 'pointer-events-none');
+            btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">lock</span><span>CONFIRMAR OFERTA</span>';
+        }
     }
 }
 
