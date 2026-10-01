@@ -11,27 +11,27 @@ def registrar_jugador(usuario, correo, password):
 
     try:
         salt = bcrypt.gensalt()
-        hashed_pw = bcrypt.hashpw(password.encode('utf-8'), salt)
+        hashed_pw = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
         with get_db_cursor(commit=True) as (cursor, _):
-            cursor.execute("SELECT id_servidor FROM T_Servidor LIMIT 1")
+            cursor.execute("SELECT id_servidor FROM servidores LIMIT 1")
             servidor = cursor.fetchone()
             if not servidor:
-                return False, "No hay servidores configurados en T_Servidor"
+                return False, "No hay servidores configurados en servidores"
             
             id_servidor = servidor[0]
             
             # 1. Crear jugador
             query_jugador = """
-                INSERT INTO T_Jugador (id_servidor, nombre_usuario, correo, contrasena_hash) 
+                INSERT INTO jugadores (id_servidor, nombre_usuario, correo, contrasena_hash) 
                 VALUES (%s, %s, %s, %s)
             """
             cursor.execute(query_jugador, (id_servidor, usuario, correo, hashed_pw))
             id_jugador = cursor.lastrowid
             
-            # 2. Crear cuenta bancaria inicial
+            # 2. Crear cuenta bancaria inicial (PERSONAL)
             query_cuenta = """
-                INSERT INTO T_Cuenta (id_jugador, id_servidor, tipo_cuenta, saldo_inicial, saldo_disponible) 
+                INSERT INTO cuentas (id_jugador, id_servidor, tipo_cuenta, saldo_inicial, saldo_disponible) 
                 VALUES (%s, %s, 'PERSONAL', 0.00, 0.00)
             """
             cursor.execute(query_cuenta, (id_jugador, id_servidor))
@@ -51,21 +51,25 @@ def iniciar_sesion(usuario, password):
 
     try:
         with get_db_cursor(dictionary=True) as (cursor, _):
-            query = "SELECT id_jugador, contrasena_hash, es_admin, estado FROM T_Jugador WHERE nombre_usuario = %s"
+            query = "SELECT id_jugador, contrasena_hash, es_admin, estado FROM jugadores WHERE nombre_usuario = %s"
             cursor.execute(query, (usuario,))
             result = cursor.fetchone()
             
-            if result and bcrypt.checkpw(password.encode('utf-8'), result['contrasena_hash'].encode('utf-8')):
-                if result.get('estado') == 'SUSPENDIDO':
-                    return False, "Tu cuenta ha sido SUSPENDIDA / BANEADA por un Administrador."
-                return True, {
-                    'id_usuario': result['id_jugador'], 
-                    'usuario': usuario,
-                    'es_admin': bool(result.get('es_admin')),
-                    'estado': result.get('estado')
-                }
-            else:
-                return False, "Usuario o contraseña incorrectos"
+            if result:
+                db_pw = result['contrasena_hash']
+                if isinstance(db_pw, str):
+                    db_pw = db_pw.encode('utf-8')
+                
+                if bcrypt.checkpw(password.encode('utf-8'), db_pw):
+                    if result.get('estado') == 'SUSPENDIDO':
+                        return False, "Tu cuenta ha sido SUSPENDIDA / BANEADA por un Administrador."
+                    return True, {
+                        'id_usuario': result['id_jugador'], 
+                        'usuario': usuario,
+                        'es_admin': bool(result.get('es_admin')),
+                        'estado': result.get('estado')
+                    }
+            return False, "Usuario o contraseña incorrectos"
     except Error as e:
         return False, f"Error durante el login: {e}"
     except Exception as e:

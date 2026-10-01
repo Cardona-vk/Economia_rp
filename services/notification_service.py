@@ -7,7 +7,7 @@ def crear_notificacion(id_jugador: int, titulo: str, mensaje: str, tipo: str = '
     try:
         with get_db_cursor(commit=True) as (cursor, _):
             cursor.execute("""
-                INSERT INTO T_Notificacion (id_jugador, titulo, mensaje, tipo, leido)
+                INSERT INTO notificaciones (id_jugador, titulo, mensaje, tipo, leido)
                 VALUES (%s, %s, %s, %s, FALSE)
             """, (id_jugador, titulo, mensaje, tipo))
             return True, "Notificación registrada"
@@ -22,7 +22,7 @@ def obtener_notificaciones_no_leidas(id_jugador: int):
         with get_db_cursor(dictionary=True, commit=False) as (cursor, _):
             cursor.execute("""
                 SELECT id_notificacion, id_jugador, titulo, mensaje, tipo, fecha_creacion
-                FROM T_Notificacion
+                FROM notificaciones
                 WHERE id_jugador = %s AND leido = FALSE
                 ORDER BY id_notificacion ASC
             """, (id_jugador,))
@@ -30,7 +30,6 @@ def obtener_notificaciones_no_leidas(id_jugador: int):
             return rows, "OK"
     except Exception as e:
         return [], f"Error al consultar notificaciones: {str(e)}"
-
 
 def marcar_como_leidas(id_jugador: int, ids_notificaciones=None):
     """
@@ -41,13 +40,13 @@ def marcar_como_leidas(id_jugador: int, ids_notificaciones=None):
             if ids_notificaciones:
                 format_strings = ','.join(['%s'] * len(ids_notificaciones))
                 cursor.execute(f"""
-                    UPDATE T_Notificacion
+                    UPDATE notificaciones
                     SET leido = TRUE
                     WHERE id_jugador = %s AND id_notificacion IN ({format_strings})
                 """, [id_jugador] + list(ids_notificaciones))
             else:
                 cursor.execute("""
-                    UPDATE T_Notificacion
+                    UPDATE notificaciones
                     SET leido = TRUE
                     WHERE id_jugador = %s AND leido = FALSE
                 """, (id_jugador,))

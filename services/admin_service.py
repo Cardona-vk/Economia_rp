@@ -8,36 +8,36 @@ def obtener_telemetria_global():
     """
     try:
         with get_db_cursor(dictionary=True, commit=False) as (cursor, _):
-            # 1. Fondos Tesorería Sistema (Cuenta ID 1)
-            cursor.execute("SELECT saldo_disponible FROM T_Cuenta WHERE id_cuenta = 1")
+            # 1. Fondos Tesorería Sistema (Cuenta ID 1 / tipo SISTEMA)
+            cursor.execute("SELECT saldo_disponible FROM cuentas WHERE tipo_cuenta = 'SISTEMA' LIMIT 1")
             row_sis = cursor.fetchone()
             saldo_sistema = float(row_sis['saldo_disponible']) if row_sis else 0.0
 
             # 2. Total dinero de jugadores
-            cursor.execute("SELECT COALESCE(SUM(saldo_disponible), 0) AS total_jugadores FROM T_Cuenta WHERE tipo_cuenta = 'PERSONAL'")
+            cursor.execute("SELECT COALESCE(SUM(saldo_disponible), 0) AS total_jugadores FROM cuentas WHERE tipo_cuenta != 'SISTEMA'")
             row_jug = cursor.fetchone()
             saldo_jugadores = float(row_jug['total_jugadores']) if row_jug else 0.0
 
             # 3. Total ítems en circulación
-            cursor.execute("SELECT COUNT(*) AS total_items FROM T_Item")
+            cursor.execute("SELECT COUNT(*) AS total_items FROM items")
             total_items = cursor.fetchone()['total_items']
 
             # 4. Total jugadores registrados
-            cursor.execute("SELECT COUNT(*) AS total_jugadores FROM T_Jugador")
+            cursor.execute("SELECT COUNT(*) AS total_jugadores FROM jugadores")
             total_jugadores = cursor.fetchone()['total_jugadores']
 
             # 5. Total volumen transaccionado
-            cursor.execute("SELECT COALESCE(SUM(monto), 0) AS volumen, COUNT(*) AS total_trx FROM T_Transaccion WHERE estado_transaccion = 'COMPLETADA'")
+            cursor.execute("SELECT COALESCE(SUM(monto), 0) AS volumen, COUNT(*) AS total_trx FROM transacciones WHERE estado_transaccion = 'COMPLETADA'")
             row_trx = cursor.fetchone()
             volumen = float(row_trx['volumen']) if row_trx else 0.0
             total_trx = row_trx['total_trx'] if row_trx else 0
 
             # 6. Trades activos o pendientes
-            cursor.execute("SELECT COUNT(*) AS trades_activos FROM T_Negociacion_Tradeo WHERE estado IN ('PENDIENTE', 'ACEPTADO', 'EN_PROCESO', 'ESPERANDO_CONFIRMACION_FINAL')")
+            cursor.execute("SELECT COUNT(*) AS trades_activos FROM negociaciones_tradeos WHERE estado IN ('PENDIENTE', 'ACEPTADO', 'EN_PROCESO', 'ESPERANDO_CONFIRMACION_FINAL')")
             trades_activos = cursor.fetchone()['trades_activos']
 
             # 7. Parámetros del Servidor
-            cursor.execute("SELECT id_servidor, nombre, porcentaje_comision, limite_bienes_por_jugador, tiempo_enfriamiento_min FROM T_Servidor WHERE id_servidor = 1")
+            cursor.execute("SELECT id_servidor, nombre, porcentaje_comision, limite_bienes_por_jugador, tiempo_enfriamiento_min FROM servidores WHERE id_servidor = 1")
             servidor = cursor.fetchone()
 
             return {
@@ -67,10 +67,9 @@ def listar_todos_jugadores():
                     j.estado,
                     j.es_admin,
                     j.fecha_registro,
-                    COALESCE(c.saldo_disponible, 0.00) AS saldo,
-                    (SELECT COUNT(*) FROM T_Item i WHERE i.id_jugador = j.id_jugador) AS total_items
-                FROM T_Jugador j
-                LEFT JOIN T_Cuenta c ON c.id_jugador = j.id_jugador
+                    COALESCE((SELECT SUM(c.saldo_disponible) FROM cuentas c WHERE c.id_jugador = j.id_jugador), 0.00) AS saldo,
+                    (SELECT COUNT(*) FROM items i WHERE i.id_jugador = j.id_jugador) AS total_items
+                FROM jugadores j
                 ORDER BY j.id_jugador ASC
             """)
             players = cursor.fetchall()
@@ -87,7 +86,7 @@ def cambiar_estado_jugador(id_jugador: int, nuevo_estado: str):
 
     try:
         with get_db_cursor(commit=True) as (cursor, _):
-            cursor.execute("UPDATE T_Jugador SET estado = %s WHERE id_jugador = %s", (nuevo_estado, id_jugador))
+            cursor.execute("UPDATE jugadores SET estado = %s WHERE id_jugador = %s", (nuevo_estado, id_jugador))
             
             tipo_alerta = 'WARNING' if nuevo_estado != 'ACTIVO' else 'SUCCESS'
             titulo = f"🛡 ESTADO DE CUENTA: {nuevo_estado}"
@@ -104,7 +103,7 @@ def cambiar_rol_admin(id_jugador: int, es_admin: bool):
     """
     try:
         with get_db_cursor(commit=True) as (cursor, _):
-            cursor.execute("UPDATE T_Jugador SET es_admin = %s WHERE id_jugador = %s", (es_admin, id_jugador))
+            cursor.execute("UPDATE jugadores SET es_admin = %s WHERE id_jugador = %s", (es_admin, id_jugador))
             
             titulo = "★ PRIVILEGIOS DE ADMINISTRADOR"
             mensaje = f"Has sido nombrado {'ADMINISTRADOR' if es_admin else 'JUGADOR ESTÁNDAR'} por la administración central."
@@ -121,7 +120,7 @@ def ajustar_saldo_jugador(id_jugador: int, monto: float, operacion: str = 'SET')
     try:
         monto_float = float(monto)
         with get_db_cursor(dictionary=True, commit=True) as (cursor, _):
-            cursor.execute("SELECT id_cuenta, saldo_disponible FROM T_Cuenta WHERE id_jugador = %s FOR UPDATE", (id_jugador,))
+            cursor.execute("SELECT id_cuenta, saldo_disponible FROM cuentas WHERE id_jugador = %s ORDER BY (tipo_cuenta = 'PERSONAL') DESC, id_cuenta ASC LIMIT 1 FOR UPDATE", (id_jugador,))
             cuenta = cursor.fetchone()
             if not cuenta:
                 return False, f"No existe cuenta asociada al jugador #{id_jugador}."
@@ -148,7 +147,7 @@ def ajustar_saldo_jugador(id_jugador: int, monto: float, operacion: str = 'SET')
             if nuevo_saldo < 0:
                 return False, "El saldo no puede ser negativo."
 
-            cursor.execute("UPDATE T_Cuenta SET saldo_disponible = %s WHERE id_cuenta = %s", (nuevo_saldo, cuenta['id_cuenta']))
+            cursor.execute("UPDATE cuentas SET saldo_disponible = %s WHERE id_cuenta = %s", (nuevo_saldo, cuenta['id_cuenta']))
             
             titulo = "💳 ACTUALIZACIÓN BANCARIA (ADMIN)"
             mensaje = f"El Administrador ha realizado una modificación en tu cuenta: {desc}. Tu nuevo saldo disponible es: ${nuevo_saldo:,.2f}."
@@ -168,14 +167,14 @@ def crear_jugador_admin(usuario: str, correo: str, password: str, saldo_inicial:
 
         with get_db_cursor(commit=True) as (cursor, _):
             cursor.execute("""
-                INSERT INTO T_Jugador (id_servidor, nombre_usuario, correo, contrasena_hash, estado, es_admin)
+                INSERT INTO jugadores (id_servidor, nombre_usuario, correo, contrasena_hash, estado, es_admin)
                 VALUES (1, %s, %s, %s, 'ACTIVO', %s)
             """, (usuario, correo, pw_hash, es_admin))
             nuevo_id = cursor.lastrowid
 
             # Crear cuenta bancaria
             cursor.execute("""
-                INSERT INTO T_Cuenta (id_jugador, id_servidor, tipo_cuenta, saldo_inicial, saldo_disponible)
+                INSERT INTO cuentas (id_jugador, id_servidor, tipo_cuenta, saldo_inicial, saldo_disponible)
                 VALUES (%s, 1, 'PERSONAL', %s, %s)
             """, (nuevo_id, float(saldo_inicial), float(saldo_inicial)))
 
@@ -194,8 +193,8 @@ def obtener_inventario_jugador_admin(id_jugador: int):
     try:
         with get_db_cursor(dictionary=True, commit=False) as (cursor, _):
             cursor.execute("""
-                SELECT id_item, nombre, precio, tiene_deuda, antiguedad_dias, fecha
-                FROM T_Item
+                SELECT id_item, nombre, precio, tiene_deuda, antiguedad_dias, fecha, estado_custodia, tipo_propietario
+                FROM items
                 WHERE id_jugador = %s
                 ORDER BY id_item DESC
             """, (id_jugador,))
@@ -210,7 +209,7 @@ def eliminar_item_admin(id_item: int):
     """
     try:
         with get_db_cursor(dictionary=True, commit=True) as (cursor, _):
-            cursor.execute("SELECT id_jugador, nombre, precio FROM T_Item WHERE id_item = %s", (id_item,))
+            cursor.execute("SELECT id_jugador, nombre, precio FROM items WHERE id_item = %s", (id_item,))
             item = cursor.fetchone()
             if not item:
                 return False, f"El ítem #{id_item} no existe."
@@ -218,11 +217,12 @@ def eliminar_item_admin(id_item: int):
             id_jugador = item['id_jugador']
             nombre = item['nombre']
 
-            cursor.execute("DELETE FROM T_Item WHERE id_item = %s", (id_item,))
+            cursor.execute("DELETE FROM items WHERE id_item = %s", (id_item,))
 
-            titulo = "⚠ INCAUTACIÓN DE BIEN (ADMIN)"
-            mensaje = f"El Administrador ha decomisado o retirado el bien '{nombre}' (ID #{id_item}) de tu inventario."
-            notification_service.crear_notificacion(id_jugador, titulo, mensaje, 'WARNING')
+            if id_jugador:
+                titulo = "⚠ INCAUTACIÓN DE BIEN (ADMIN)"
+                mensaje = f"El Administrador ha decomisado o retirado el bien '{nombre}' (ID #{id_item}) de tu inventario."
+                notification_service.crear_notificacion(id_jugador, titulo, mensaje, 'WARNING')
 
             return True, f"Ítem '{nombre}' (#{id_item}) eliminado e incautado exitosamente."
     except Exception as e:
@@ -235,14 +235,15 @@ def inyectar_item_admin(id_jugador: int, nombre: str, precio: float, tiene_deuda
     try:
         with get_db_cursor(commit=True) as (cursor, _):
             cursor.execute("""
-                INSERT INTO T_Item (id_jugador, nombre, precio, tiene_deuda, antiguedad_dias)
-                VALUES (%s, %s, %s, %s, 0)
+                INSERT INTO items (id_jugador, nombre, precio, tiene_deuda, antiguedad_dias, estado_custodia, tipo_propietario)
+                VALUES (%s, %s, %s, %s, 0, 'PERSONAL', 'JUGADOR')
             """, (id_jugador, nombre, float(precio), tiene_deuda))
             nuevo_id_item = cursor.lastrowid
 
-            titulo = "🎁 ¡NUEVO BIEN OTORGADO POR ADMINISTRACIÓN!"
-            mensaje = f"El Administrador te ha otorgado el bien '{nombre}' valorado en ${float(precio):,.2f}{' (Con Gravamen/Deuda)' if tiene_deuda else ' (Libre)'}."
-            notification_service.crear_notificacion(id_jugador, titulo, mensaje, 'SUCCESS')
+            if id_jugador:
+                titulo = "🎁 ¡NUEVO BIEN OTORGADO POR ADMINISTRACIÓN!"
+                mensaje = f"El Administrador te ha otorgado el bien '{nombre}' valorado en ${float(precio):,.2f}{' (Con Gravamen/Deuda)' if tiene_deuda else ' (Libre)'}."
+                notification_service.crear_notificacion(id_jugador, titulo, mensaje, 'SUCCESS')
 
             return True, f"Bien '{nombre}' (ID #{nuevo_id_item}) inyectado al jugador #{id_jugador} exitosamente."
     except Exception as e:
@@ -250,12 +251,12 @@ def inyectar_item_admin(id_jugador: int, nombre: str, precio: float, tiene_deuda
 
 def actualizar_parametros_servidor(porcentaje_comision: float, limite_bienes: int, tiempo_enfriamiento: int):
     """
-    Actualiza la configuración central del servidor en T_Servidor.
+    Actualiza la configuración central del servidor en servidores.
     """
     try:
         with get_db_cursor(commit=True) as (cursor, _):
             cursor.execute("""
-                UPDATE T_Servidor
+                UPDATE servidores
                 SET porcentaje_comision = %s,
                     limite_bienes_por_jugador = %s,
                     tiempo_enfriamiento_min = %s
@@ -267,14 +268,14 @@ def actualizar_parametros_servidor(porcentaje_comision: float, limite_bienes: in
 
 def inyectar_fondos_tesoreria(monto: float):
     """
-    Inyecta fondos de respaldo a la cuenta central de tesorería del sistema (ID: 1).
+    Inyecta fondos de respaldo a la cuenta central de tesorería del sistema.
     """
     try:
         with get_db_cursor(commit=True) as (cursor, _):
             cursor.execute("""
-                UPDATE T_Cuenta
+                UPDATE cuentas
                 SET saldo_disponible = saldo_disponible + %s
-                WHERE id_cuenta = 1
+                WHERE tipo_cuenta = 'SISTEMA'
             """, (float(monto),))
             return True, f"Inyección de ${float(monto):,.2f} a la Tesorería Central completada."
     except Exception as e:
