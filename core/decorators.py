@@ -33,7 +33,7 @@ def admin_required(f):
         
         try:
             with get_db_cursor() as (cursor, _):
-                cursor.execute("SELECT es_admin FROM T_Jugador WHERE id_jugador = %s", (user_id,))
+                cursor.execute("SELECT es_admin FROM jugadores WHERE id_jugador = %s", (user_id,))
                 res = cursor.fetchone()
                 if not res or not res[0]:
                     if request.path.startswith('/api/'):

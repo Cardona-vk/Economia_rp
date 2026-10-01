@@ -15,10 +15,10 @@ def obtener_historial_jugador(id_jugador):
             query = """
             SELECT t.id_transaccion, t.fecha_hora, t.tipo_transaccion, t.monto, t.estado_transaccion,
                    i.nombre AS nombre_item
-            FROM T_Transaccion t
-            LEFT JOIN T_Item i ON t.id_item_afectado = i.id_item
-            LEFT JOIN T_Negociacion_Tradeo n ON t.id_negociacion = n.id_negociacion
-            LEFT JOIN T_Jornada_Laboral j ON t.id_jornada = j.id_jornada
+            FROM transacciones t
+            LEFT JOIN items i ON t.id_item_afectado = i.id_item
+            LEFT JOIN negociaciones_tradeos n ON t.id_negociacion = n.id_negociacion
+            LEFT JOIN jornadas_laborales j ON t.id_jornada = j.id_jornada
             WHERE (t.tipo_transaccion = 'TRADEO_P2P' AND (n.id_jugador_1 = %s OR n.id_jugador_2 = %s))
                OR (t.tipo_transaccion = 'PAGO_SALARIO' AND j.id_jugador = %s)
             ORDER BY t.fecha_hora DESC
