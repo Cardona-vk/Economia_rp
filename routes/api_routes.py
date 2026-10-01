@@ -301,8 +301,9 @@ def api_admin_server_config():
     pct = data.get('porcentaje_comision', 5.0)
     limite = data.get('limite_bienes', 100)
     cooldown = data.get('tiempo_enfriamiento', 15)
+    limite_tradeos = data.get('limite_tradeos_diarios', 5)
 
-    success, msg = admin_service.actualizar_parametros_servidor(pct, limite, cooldown)
+    success, msg = admin_service.actualizar_parametros_servidor(pct, limite, cooldown, limite_tradeos)
     return jsonify({"success": success, "message": msg}), (200 if success else 400)
 
 @api_bp.route('/admin/treasury/inject', methods=['POST'])

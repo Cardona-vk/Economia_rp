@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS servidores (
   nombre VARCHAR(100) NOT NULL,
   porcentaje_comision DECIMAL(5,2) NOT NULL DEFAULT 5.00,
   limite_bienes_por_jugador INT NOT NULL DEFAULT 100,
-  tiempo_enfriamiento_min INT NOT NULL DEFAULT 15
+  tiempo_enfriamiento_min INT NOT NULL DEFAULT 15,
+  limite_tradeos_diarios INT NOT NULL DEFAULT 5
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS jugadores (

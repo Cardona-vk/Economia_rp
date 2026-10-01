@@ -149,7 +149,7 @@
     </div>
 
     <!-- Section 2: Parámetros Económicos Globales (T_Servidor) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter-desktop">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter-desktop">
         
         <!-- Comisión -->
         <div class="flex flex-col justify-between bg-surface-container/70 backdrop-blur-xl rounded-2xl p-space-lg shadow-xl border border-primary/20">
@@ -204,6 +204,25 @@
                     <input type="number" id="cfg-tiempo-enfriamiento" step="1" min="1" max="120" value="15"
                            class="w-full bg-surface-container-lowest p-3 rounded-xl font-mono text-base font-bold text-tertiary focus:outline-none focus:ring-1 focus:ring-tertiary border border-outline-variant/15"/>
                     <span class="font-label-sm text-xs text-tertiary uppercase font-bold">MIN</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Límite de Tradeos por Día -->
+        <div class="flex flex-col justify-between bg-surface-container/70 backdrop-blur-xl rounded-2xl p-space-lg shadow-xl border border-warning/20">
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <span class="font-label-sm text-xs uppercase text-warning font-bold">// LÍMITE TRANSACCIONAL P2P</span>
+                    <span class="material-symbols-outlined text-warning text-[20px]">swap_horiz</span>
+                </div>
+                <h3 class="font-headline-md text-base uppercase text-on-surface font-bold">Límite Tradeos por Día</h3>
+                <p class="font-body-sm text-xs text-on-surface-variant">
+                    Tope diario de intercambios completados permitidos por operador antes de alcanzar la cuota (RN011).
+                </p>
+                <div class="flex items-center gap-2 mt-2">
+                    <input type="number" id="cfg-limite-tradeos-diarios" step="1" min="1" max="100" value="5"
+                           class="w-full bg-surface-container-lowest p-3 rounded-xl font-mono text-base font-bold text-warning focus:outline-none focus:ring-1 focus:ring-warning border border-outline-variant/15"/>
+                    <span class="font-label-sm text-xs text-warning uppercase font-bold">TRADES/DÍA</span>
                 </div>
             </div>
         </div>
@@ -277,6 +296,7 @@
                 document.getElementById('cfg-porcentaje-comision').value = t.servidor.porcentaje_comision || 5.0;
                 document.getElementById('cfg-limite-bienes').value = t.servidor.limite_bienes_por_jugador || 100;
                 document.getElementById('cfg-tiempo-enfriamiento').value = t.servidor.tiempo_enfriamiento_min || 15;
+                document.getElementById('cfg-limite-tradeos-diarios').value = t.servidor.limite_tradeos_diarios || 5;
             }
         } catch (e) {
             console.error("[Admin Telemetry Error]", e);
@@ -681,7 +701,8 @@
         const payload = {
             porcentaje_comision: document.getElementById('cfg-porcentaje-comision').value,
             limite_bienes: document.getElementById('cfg-limite-bienes').value,
-            tiempo_enfriamiento: document.getElementById('cfg-tiempo-enfriamiento').value
+            tiempo_enfriamiento: document.getElementById('cfg-tiempo-enfriamiento').value,
+            limite_tradeos_diarios: document.getElementById('cfg-limite-tradeos-diarios').value
         };
 
         const res = await fetch('/api/admin/server/config', {

@@ -96,7 +96,15 @@ def abrir_negociacion(id_j1, id_j2, item_j1=None, item_j2=None, monto_j1=0.0, mo
                 if p['estado'] == 'SUSPENDIDO':
                     return False, f"El operador {p['nombre_usuario']} se encuentra suspendido del servidor."
 
-            # 2. Límite diario de tradeos (RN011: máx 5 tradeos/día)
+            # 2. Límite diario de tradeos (RN011: dinámico desde servidores)
+            cursor.execute("""
+                SELECT s.limite_tradeos_diarios 
+                FROM jugadores j JOIN servidores s ON j.id_servidor = s.id_servidor 
+                WHERE j.id_jugador = %s
+            """, (id_j1_clean,))
+            row_srv_limit = cursor.fetchone()
+            limite_diario = int(row_srv_limit['limite_tradeos_diarios']) if (row_srv_limit and row_srv_limit.get('limite_tradeos_diarios') is not None) else 5
+
             cursor.execute("""
                 SELECT COUNT(*) AS total_hoy FROM transacciones t
                 JOIN negociaciones_tradeos n ON t.id_negociacion = n.id_negociacion
@@ -105,8 +113,8 @@ def abrir_negociacion(id_j1, id_j2, item_j1=None, item_j2=None, monto_j1=0.0, mo
                   AND (n.id_jugador_1 = %s OR n.id_jugador_2 = %s)
             """, (id_j1_clean, id_j1_clean))
             tradeos_hoy = cursor.fetchone()['total_hoy']
-            if tradeos_hoy >= 5:
-                return False, "Has alcanzado el límite regulatorio de 5 tradeos por día (RN011)."
+            if tradeos_hoy >= limite_diario:
+                return False, f"Has alcanzado el límite regulatorio de {limite_diario} tradeos por día (RN011)."
 
             # 3. Negociación activa simultánea (RN012)
             cursor.execute("""

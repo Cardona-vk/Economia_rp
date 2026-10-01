@@ -37,7 +37,7 @@ def obtener_telemetria_global():
             trades_activos = cursor.fetchone()['trades_activos']
 
             # 7. Parámetros del Servidor
-            cursor.execute("SELECT id_servidor, nombre, porcentaje_comision, limite_bienes_por_jugador, tiempo_enfriamiento_min FROM servidores WHERE id_servidor = 1")
+            cursor.execute("SELECT id_servidor, nombre, porcentaje_comision, limite_bienes_por_jugador, tiempo_enfriamiento_min, limite_tradeos_diarios FROM servidores WHERE id_servidor = 1")
             servidor = cursor.fetchone()
 
             return {
@@ -248,7 +248,7 @@ def inyectar_item_admin(id_jugador: int, nombre: str, precio: float, tiene_deuda
     except Exception as e:
         return False, f"Error al inyectar ítem: {str(e)}"
 
-def actualizar_parametros_servidor(porcentaje_comision: float, limite_bienes: int, tiempo_enfriamiento: int):
+def actualizar_parametros_servidor(porcentaje_comision: float, limite_bienes: int, tiempo_enfriamiento: int, limite_tradeos_diarios: int = 5):
     """
     Actualiza la configuración central del servidor en servidores.
     """
@@ -258,9 +258,10 @@ def actualizar_parametros_servidor(porcentaje_comision: float, limite_bienes: in
                 UPDATE servidores
                 SET porcentaje_comision = %s,
                     limite_bienes_por_jugador = %s,
-                    tiempo_enfriamiento_min = %s
+                    tiempo_enfriamiento_min = %s,
+                    limite_tradeos_diarios = %s
                 WHERE id_servidor = 1
-            """, (float(porcentaje_comision), int(limite_bienes), int(tiempo_enfriamiento)))
+            """, (float(porcentaje_comision), int(limite_bienes), int(tiempo_enfriamiento), int(limite_tradeos_diarios)))
             return True, "Parámetros globales del servidor actualizados en el Kernel."
     except Exception as e:
         return False, f"Error al actualizar servidor: {str(e)}"
